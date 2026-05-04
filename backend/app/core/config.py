@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = Field(default="change-me", alias="JWT_SECRET_KEY")
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
-    flask_debug: bool = True
+    flask_debug: bool = False
 
     @computed_field  # type: ignore[prop-decorator]
     @property

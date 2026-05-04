@@ -1,9 +1,10 @@
 import axios from "axios";
 
 import { authStore } from "../store/auth-store";
+import { environment } from "../config/environment";
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1",
+  baseURL: environment.apiBaseUrl,
 });
 
 apiClient.interceptors.request.use((config) => {
