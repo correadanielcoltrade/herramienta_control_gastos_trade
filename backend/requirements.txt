@@ -1,7 +1,7 @@
 Flask==3.1.1
 Flask-Cors==6.0.1
 sqlalchemy==2.0.41
-psycopg[binary]==3.2.9
+psycopg[binary]==3.2.10
 python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.3
