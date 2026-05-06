@@ -5,57 +5,53 @@ Este backend está configurado para desplegarse en **Render** sin cambios adicio
 ## Pasos para desplegar:
 
 ### 1. **Conecta tu repositorio a Render:**
-   - Ve a [render.com](https://render.com)
-   - Crea un nuevo **Web Service**
-   - Conecta tu repositorio de GitHub
-   - Selecciona la rama `main` (o la que desees desplegar)
+
+- Ve a [render.com](https://render.com)
+- Crea un nuevo **Web Service**
+- Conecta tu repositorio de GitHub
+- Selecciona la rama `main` (o la que desees desplegar)
 
 ### 2. **Configuración en Render:**
 
    **Build Command:**
-   ```
+
+```
    pip install -r requirements.txt && alembic upgrade head
-   ```
+```
 
    **Start Command:**
-   ```
+
+```
    gunicorn -w 4 -b 0.0.0.0:$PORT "app.main:app"
-   ```
+```
 
    **Root Directory:** `backend`
 
 ### 3. **Variables de Entorno (Environment Variables):**
 
-   Copia todas las variables del archivo `.env` al dashboard de Render. Son:
+   Agrega las siguientes variables en el dashboard de Render:
 
-   ```
-   APP_NAME=MKP Serial Control
-   API_V1_PREFIX=/api/v1
+```
+   DATABASE_URL=postgresql://user:password@host:5432/dbname
+   JWT_SECRET_KEY=tu-clave-super-secreta-aqui
    FRONTEND_URL=https://tu-frontend.onrender.com
-   DB_USER=root
-   DB_PASSWORD=tu-contraseña
-   DB_HOST=dpg-d7btvvpr0fns73bnrrt0-a.oregon-postgres.render.com
-   DB_PORT=5432
-   DB_NAME=mkpsupli
-   DB_SSLMODE=require
-   DB_SCHEMA=Schemas_Herramienta_Trade_gastos
-   JWT_SECRET_KEY=change-me-in-production
-   JWT_ALGORITHM=HS256
-   ACCESS_TOKEN_EXPIRE_MINUTES=480
-   FLASK_DEBUG=false
-   ```
+   FLASK_DEBUG=False
+```
 
-   **O simplemente usa `DATABASE_URL` como variable única:**
-   ```
-   DATABASE_URL=postgresql://root:PASSWORD@HOST:5432/mkpsupli
-   ```
+   **Notas importantes:**
+
+- `DATABASE_URL`: Reemplaza con la URL de tu base de datos PostgreSQL
+- `JWT_SECRET_KEY`: Usa una clave segura y aleatoria (mínimo 32 caracteres)
+- `FRONTEND_URL`: La URL completa de tu frontend en producción
+- `FLASK_DEBUG`: Mantén en False en producción
 
 ### 4. **Base de Datos:**
 
    Si usas Render también para la base de datos PostgreSQL:
-   - Crea un PostgreSQL Database en Render
-   - Copia la `DATABASE_URL` y pégala en el Web Service
-   - Las migraciones se ejecutarán automáticamente en el `release` command
+
+- Crea un PostgreSQL Database en Render
+- Copia la `DATABASE_URL` y pégala en el Web Service
+- Las migraciones se ejecutarán automáticamente en el `release` command
 
 ### 5. **Desplegar:**
 
@@ -64,19 +60,21 @@ Este backend está configurado para desplegarse en **Render** sin cambios adicio
 ## Verificación:
 
    Después de desplegar, prueba el endpoint de salud:
-   ```
+
+```
    GET https://tu-app.onrender.com/health
-   ```
+```
 
    Deberías recibir:
-   ```json
+
+```json
    {"status": "ok"}
-   ```
+```
 
 ## Archivos incluidos:
 
 - `Procfile`: Configuración de despliegue para Render
-- `.env`: Variables de entorno (copiar a Render)
+- `.env.example`: Variables de entorno necesarias
 - `requirements.txt`: Dependencias Python (incluye gunicorn)
 - `run.py`: Script de inicio (compatible con Render)
 
