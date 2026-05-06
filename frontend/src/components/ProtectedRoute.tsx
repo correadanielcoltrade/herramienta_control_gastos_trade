@@ -1,13 +1,15 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
-import type { RoleName } from "../types";
+import type { ModuleName, RoleName } from "../types";
+import { canAccessModule } from "../utils/access";
 
 interface ProtectedRouteProps {
   allowedRoles?: RoleName[];
+  module?: ModuleName;
 }
 
-export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({ allowedRoles, module }: ProtectedRouteProps) {
   const location = useLocation();
   const { token, user, isLoading } = useAuth();
 
@@ -27,6 +29,9 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/" replace />;
   }
 
+  if (module && !canAccessModule(user.role.name, module)) {
+    return <Navigate to="/" replace />;
+  }
+
   return <Outlet />;
 }
-

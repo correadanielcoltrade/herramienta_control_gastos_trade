@@ -10,7 +10,6 @@ import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ScanPage } from "./pages/ScanPage";
 import { SupplyPage } from "./pages/SupplyPage";
-import { supplyModuleRoles } from "./utils/access";
 
 const queryClient = new QueryClient();
 
@@ -20,19 +19,27 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute module="dashboard" />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<DashboardPage />} />
+            </Route>
+          </Route>
+          <Route element={<ProtectedRoute module="scan" />}>
+            <Route element={<AppShell />}>
               <Route path="/scan" element={<ScanPage />} />
+            </Route>
+          </Route>
+          <Route element={<ProtectedRoute module="legalization" />}>
+            <Route element={<AppShell />}>
               <Route path="/legalizacion" element={<LegalizationPage />} />
             </Route>
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={supplyModuleRoles} />}>
+          <Route element={<ProtectedRoute module="supply" />}>
             <Route element={<AppShell />}>
               <Route path="/abastecimiento" element={<SupplyPage />} />
             </Route>
           </Route>
-          <Route element={<ProtectedRoute allowedRoles={["SuperAdmin"]} />}>
+          <Route element={<ProtectedRoute module="admin" />}>
             <Route element={<AppShell />}>
               <Route path="/admin" element={<AdminPage />} />
             </Route>

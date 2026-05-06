@@ -1,4 +1,5 @@
 .env
+.env.production
 .venv/
 .claude/
 .vscode/
@@ -9,3 +10,7 @@ node_modules/
 dist/
 build/
 .DS_Store
+backend/error.log
+check_roles.py
+fix_trade_role.py
+verify_schema.py

@@ -2,15 +2,23 @@ import { BarChart3, ClipboardCheck, LogOut, Menu, PackagePlus, PanelLeftClose, P
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
+import type { ModuleName } from "../types";
 import { useAuth } from "../hooks/useAuth";
-import { canAccessSupplyModule } from "../utils/access";
+import { canAccessModule } from "../utils/access";
 
-const navigation = [
-  { to: "/", label: "Dashboard", icon: BarChart3 },
-  { to: "/scan", label: "Recibo de inventario de gastos", icon: QrCode },
-  { to: "/abastecimiento", label: "Abastecimiento", icon: PackagePlus },
-  { to: "/legalizacion", label: "Legalizacion", icon: ClipboardCheck },
-  { to: "/admin", label: "Admin", icon: Shield },
+type NavItem = {
+  to: string;
+  label: string;
+  icon: typeof BarChart3;
+  module: ModuleName;
+};
+
+const navigation: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: BarChart3, module: "dashboard" },
+  { to: "/scan", label: "Recibo de inventario de gastos", icon: QrCode, module: "scan" },
+  { to: "/abastecimiento", label: "Abastecimiento", icon: PackagePlus, module: "supply" },
+  { to: "/legalizacion", label: "Legalizacion", icon: ClipboardCheck, module: "legalization" },
+  { to: "/admin", label: "Admin", icon: Shield, module: "admin" },
 ];
 
 const DESKTOP_BREAKPOINT = "(min-width: 768px)";
@@ -142,10 +150,8 @@ export function AppShell() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(() =>
     typeof window === "undefined" ? true : window.matchMedia(DESKTOP_BREAKPOINT).matches,
   );
-  const visibleNavigation = navigation.filter(
-    (item) =>
-      (item.to !== "/admin" || user?.role.name === "SuperAdmin") &&
-      (item.to !== "/abastecimiento" || canAccessSupplyModule(user?.role.name)),
+  const visibleNavigation = navigation.filter((item) =>
+    canAccessModule(user?.role.name, item.module),
   );
 
   useEffect(() => {

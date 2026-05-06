@@ -21,26 +21,48 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+TRADE_LEADER_ROLES = {RoleName.TRADE.value, RoleName.TRADE_LEADER.value}
+ADMIN_ACCESS_ROLES = (RoleName.SUPERADMIN, RoleName.TRADE, RoleName.TRADE_LEADER)
+# Roles que un Trade/Trade Leader puede ver, crear y editar
+TRADE_MANAGEABLE_ROLES = {
+    RoleName.ASESOR.value,
+    RoleName.TRADE.value,
+    RoleName.TRADE_LEADER.value,
+}
+
+
+def _is_trade_leader(role_name: str) -> bool:
+    return role_name in TRADE_LEADER_ROLES
+
+
 @users_bp.get("/roles")
-@require_roles(RoleName.SUPERADMIN)
+@require_roles(*ADMIN_ACCESS_ROLES)
 def list_roles():
     db = get_db()
-    roles = list(db.scalars(select(Role).order_by(Role.id)))
+    current_user = get_current_user(db)
+    query = select(Role).order_by(Role.id)
+    # Trade/Trade Leader solo ve los roles Asesor, Trade y Trade Leader
+    if _is_trade_leader(current_user.role.name):
+        query = query.where(Role.name.in_(TRADE_MANAGEABLE_ROLES))
+    roles = list(db.scalars(query))
     return json_response(dump_schema_list([RoleRead.model_validate(role) for role in roles]))
 
 
 @users_bp.get("/")
-@require_roles(RoleName.SUPERADMIN)
+@require_roles(*ADMIN_ACCESS_ROLES)
 def list_users():
     db = get_db()
-    users = list(
-        db.scalars(select(User).options(joinedload(User.role), joinedload(User.cav)).order_by(User.id))
-    )
+    current_user = get_current_user(db)
+    query = select(User).options(joinedload(User.role), joinedload(User.cav)).order_by(User.id)
+    # Trade/Trade Leader solo ve usuarios con rol Asesor, Trade o Trade Leader
+    if _is_trade_leader(current_user.role.name):
+        query = query.join(Role).where(Role.name.in_(TRADE_MANAGEABLE_ROLES))
+    users = list(db.scalars(query))
     return json_response(dump_schema_list([UserRead.model_validate(user) for user in users]))
 
 
 @users_bp.post("/")
-@require_roles(RoleName.SUPERADMIN)
+@require_roles(*ADMIN_ACCESS_ROLES)
 def create_user():
     payload = parse_body(UserCreate)
     db = get_db()
@@ -52,6 +74,11 @@ def create_user():
     role = db.get(Role, payload.role_id)
     if not role:
         raise ApiError("Rol no encontrado.", 404)
+
+    # Trade/Trade Leader solo puede crear usuarios con rol Asesor o Trade
+    if _is_trade_leader(current_user.role.name) and role.name not in TRADE_MANAGEABLE_ROLES:
+        raise ApiError("Solo puedes crear usuarios con rol Asesor o Trade.", 403)
+
     if role.name != RoleName.SUPERNUMERARIO.value and payload.cav_id is None:
         raise ApiError("El usuario requiere un CAV asignado.", 400)
 
@@ -83,7 +110,7 @@ def create_user():
 
 
 @users_bp.put("/<int:user_id>")
-@require_roles(RoleName.SUPERADMIN)
+@require_roles(*ADMIN_ACCESS_ROLES)
 def update_user(user_id: int):
     payload = parse_body(UserUpdate)
     db = get_db()
@@ -93,6 +120,10 @@ def update_user(user_id: int):
     )
     if not user:
         raise ApiError("Usuario no encontrado.", 404)
+
+    # Trade/Trade Leader solo puede editar usuarios con rol Asesor o Trade
+    if _is_trade_leader(current_user.role.name) and user.role.name not in TRADE_MANAGEABLE_ROLES:
+        raise ApiError("Solo puedes editar usuarios con rol Asesor o Trade.", 403)
 
     changes = payload.model_dump(exclude_unset=True)
     if "correo" in changes:
@@ -108,6 +139,9 @@ def update_user(user_id: int):
         role = db.get(Role, changes["role_id"])
         if not role:
             raise ApiError("Rol no encontrado.", 404)
+        # Trade/Trade Leader solo puede asignar roles Asesor o Trade
+        if _is_trade_leader(current_user.role.name) and role.name not in TRADE_MANAGEABLE_ROLES:
+            raise ApiError("Solo puedes asignar el rol Asesor o Trade.", 403)
         if role.name != RoleName.SUPERNUMERARIO.value and changes.get("cav_id", user.cav_id) is None:
             raise ApiError("El usuario requiere un CAV asignado.", 400)
     for field, value in changes.items():

@@ -3,8 +3,18 @@ export type RoleName =
   | "OPS"
   | "Quality"
   | "Trade"
+  | "Trade Leader"
   | "Asesor"
   | "Supernumerario";
+
+export type ModuleName =
+  | "dashboard"
+  | "scan"
+  | "supply"
+  | "legalization"
+  | "admin";
+
+export type PermissionAction = "read" | "create" | "edit" | "delete";
 
 export type SerialStatus =
   | "enviado"

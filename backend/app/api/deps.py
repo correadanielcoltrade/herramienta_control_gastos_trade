@@ -16,6 +16,7 @@ GLOBAL_CAV_ROLE_NAMES = {
     RoleName.OPS.value,
     RoleName.QUALITY.value,
     RoleName.TRADE.value,
+    RoleName.TRADE_LEADER.value,
     RoleName.SUPERNUMERARIO.value,
 }
 
@@ -66,7 +67,10 @@ def require_roles(*roles: RoleName) -> Callable:
         @wraps(view)
         def wrapper(*args, **kwargs):
             current_user = get_current_user()
-            if roles and current_user.role.name not in {role.value for role in roles}:
+            allowed = {role.value for role in roles}
+            user_role = current_user.role.name
+            print(f"[DEBUG require_roles] user_role={user_role!r} allowed={allowed} match={user_role in allowed}")
+            if roles and user_role not in allowed:
                 raise ApiError("No cuentas con permisos para esta accion.", 403)
             return view(*args, **kwargs)
 
