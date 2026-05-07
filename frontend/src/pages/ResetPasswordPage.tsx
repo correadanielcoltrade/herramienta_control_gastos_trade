@@ -16,7 +16,7 @@ export function ResetPasswordPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const resetPasswordMutation = useMutation({
-    mutationFn: (token: string) => authApi.resetPassword({ token, password }),
+    mutationFn: () => authApi.resetPassword({ token: token!, password }),
     onSuccess: () => {
       setTimeout(() => {
         navigate("/login");
@@ -63,7 +63,7 @@ export function ResetPasswordPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!validatePassword()) return;
-    await resetPasswordMutation.mutateAsync(token);
+    await resetPasswordMutation.mutateAsync();
   }
 
   return (
