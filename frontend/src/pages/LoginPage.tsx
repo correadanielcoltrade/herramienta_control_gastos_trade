@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 
@@ -7,6 +8,7 @@ export function LoginPage() {
   const { user, login, loginError, loginErrorMessage, isLoading } = useAuth();
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   if (user) {
     return <Navigate to="/" replace />;
@@ -50,14 +52,24 @@ export function LoginPage() {
             </label>
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-slate-700">Contrasena</span>
-              <input
-                className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="********"
-                required
-              />
+              <div className="relative">
+                <input
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-12 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="********"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition"
+                  title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
               <Link
                 to="/forgot-password"
                 className="mt-2 inline-block text-sm text-brand-600 hover:text-brand-700 font-medium"
