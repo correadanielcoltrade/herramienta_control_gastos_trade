@@ -152,6 +152,7 @@ def serialize_supply(supply: Abastecimiento) -> SupplyRead:
         serial_id=supply.serial_id,
         serial=supply.serial.serial,
         descripcion_producto=supply.descripcion_producto,
+        numero_guia=supply.numero_guia,
         cav_id=supply.cav_id,
         centro_costos_cav=supply.centro_costos_cav,
         fecha_envio=supply.fecha_envio,
@@ -182,6 +183,7 @@ def serialize_legalization(legalization: Legalization) -> LegalizationRead:
         tipo_uso=legalization.tipo_uso,
         cliente_asesor=legalization.cliente_asesor,
         documento_cliente=legalization.documento_cliente,
+        numero_factura=legalization.numero_factura,
         firma=legalization.firma,
         asesor_responsable=legalization.asesor_responsable,
         registrado_por=legalization.user.nombre_usuario,
@@ -249,6 +251,7 @@ def register_supply(
     supply = Abastecimiento(
         serial_id=serial_obj.id,
         descripcion_producto=payload.descripcion_producto,
+        numero_guia=payload.numero_guia.strip(),
         cav_id=payload.cav_id,
         centro_costos_cav=centro_costos_cav,
         fecha_envio=payload.fecha_envio,
@@ -277,6 +280,7 @@ def register_supply(
         user_id=current_user.id,
         payload={
             "serial": payload.serial,
+            "numero_guia": payload.numero_guia.strip(),
             "cav_id": payload.cav_id,
             "centro_costos_cav": centro_costos_cav,
             "fecha_envio": payload.fecha_envio.isoformat(),
@@ -351,11 +355,12 @@ def update_supply(
     serial_obj.descripcion_producto = payload.descripcion_producto
     serial_obj.last_movement_at = payload.fecha_envio
 
-    # Solo actualizar el CAV del serial si aún está en estado ENVIADO
+    # Solo actualizar el CAV del serial si aun esta en transito.
     if serial_obj.current_status == SerialStatus.ENVIADO and payload.cav_id != serial_obj.cav_id:
         serial_obj.cav_id = payload.cav_id
 
     supply.descripcion_producto = payload.descripcion_producto
+    supply.numero_guia = payload.numero_guia.strip()
     supply.cav_id = payload.cav_id
     supply.centro_costos_cav = centro_costos_cav
     supply.fecha_envio = payload.fecha_envio
@@ -381,6 +386,7 @@ def update_supply(
         user_id=current_user.id,
         payload={
             "serial": payload.serial,
+            "numero_guia": payload.numero_guia.strip(),
             "cav_id": payload.cav_id,
             "centro_costos_cav": centro_costos_cav,
             "fecha_envio": payload.fecha_envio.isoformat(),
@@ -393,7 +399,7 @@ def update_supply(
 def _validate_supply_can_be_deleted(supply: Abastecimiento, current_user: User) -> None:
     ensure_cav_scope(current_user, supply.cav_id)
     if supply.serial.current_status != SerialStatus.ENVIADO:
-        raise ApiError("Solo se pueden eliminar abastecimientos que sigan en estado enviado.", 409)
+        raise ApiError("Solo se pueden eliminar abastecimientos que sigan en estado en transito.", 409)
 
 
 def delete_supply(
@@ -640,6 +646,7 @@ def register_legalization(
         cantidad=1,
         cliente_asesor=payload.cliente_asesor,
         documento_cliente=payload.documento_cliente,
+        numero_factura=payload.numero_factura.strip(),
         firma=payload.firma,
         asesor_responsable=payload.asesor_responsable,
         fecha=payload.fecha,
@@ -685,6 +692,7 @@ def register_legalization(
             "tipo_uso": payload.tipo_uso,
             "cliente_asesor": payload.cliente_asesor,
             "documento_cliente": payload.documento_cliente,
+            "numero_factura": payload.numero_factura.strip(),
             "asesor_responsable": payload.asesor_responsable,
         },
     )

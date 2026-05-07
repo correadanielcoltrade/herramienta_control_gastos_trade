@@ -125,6 +125,7 @@ export interface DashboardResponse {
 export interface SupplyPayload {
   serial: string;
   descripcion_producto: string;
+  numero_guia: string;
   cav_id: number;
   centro_costos_cav: string;
   fecha_envio: string;
@@ -135,6 +136,7 @@ export interface SupplyRecord {
   serial_id: number;
   serial: string;
   descripcion_producto: string;
+  numero_guia?: string | null;
   cav_id: number;
   centro_costos_cav: string;
   fecha_envio: string;
@@ -164,6 +166,7 @@ export interface LegalizationPayload {
   tipo_uso: string;
   cliente_asesor: string;
   documento_cliente?: string;
+  numero_factura: string;
   firma: string;
   asesor_responsable: string;
   fecha: string;
@@ -178,6 +181,7 @@ export interface LegalizationRecord {
   tipo_uso: string;
   cliente_asesor: string;
   documento_cliente?: string | null;
+  numero_factura?: string | null;
   firma: string;
   asesor_responsable: string;
   registrado_por: string;
@@ -197,4 +201,13 @@ export interface DashboardFilters {
   user_id?: number;
   start_date?: string;
   end_date?: string;
+}
+
+export interface ForgotPasswordPayload {
+  correo: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  password: string;
 }

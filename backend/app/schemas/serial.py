@@ -20,6 +20,7 @@ class SerialRead(ORMModel):
 class AbastecimientoCreate(BaseModel):
     serial: str = Field(min_length=2, max_length=120)
     descripcion_producto: str = Field(min_length=2, max_length=255)
+    numero_guia: str = Field(min_length=1, max_length=120)
     cav_id: int
     centro_costos_cav: str = Field(min_length=2, max_length=120)
     fecha_envio: datetime
@@ -28,6 +29,7 @@ class AbastecimientoCreate(BaseModel):
 class AbastecimientoUpdate(BaseModel):
     serial: str = Field(min_length=2, max_length=120)
     descripcion_producto: str = Field(min_length=2, max_length=255)
+    numero_guia: str = Field(min_length=1, max_length=120)
     cav_id: int
     centro_costos_cav: str = Field(min_length=2, max_length=120)
     fecha_envio: datetime
@@ -38,6 +40,7 @@ class SupplyRead(BaseModel):
     serial_id: int
     serial: str
     descripcion_producto: str
+    numero_guia: str | None = None
     cav_id: int
     centro_costos_cav: str
     fecha_envio: datetime
@@ -84,6 +87,7 @@ class LegalizationCreate(BaseModel):
     tipo_uso: str = Field(min_length=2, max_length=120)
     cliente_asesor: str = Field(min_length=2, max_length=255)
     documento_cliente: str | None = Field(default=None, max_length=120)
+    numero_factura: str = Field(min_length=1, max_length=120)
     firma: str = Field(min_length=10, max_length=2000000)
     asesor_responsable: str = Field(min_length=2, max_length=255)
     fecha: datetime
@@ -98,6 +102,7 @@ class LegalizationRead(ORMModel):
     tipo_uso: str
     cliente_asesor: str
     documento_cliente: str | None = None
+    numero_factura: str | None = None
     firma: str
     asesor_responsable: str
     registrado_por: str

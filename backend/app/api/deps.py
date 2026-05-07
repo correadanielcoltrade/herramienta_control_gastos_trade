@@ -21,6 +21,10 @@ GLOBAL_CAV_ROLE_NAMES = {
 }
 
 
+def normalize_role_name(role_name: str | None) -> str:
+    return " ".join((role_name or "").strip().split()).casefold()
+
+
 def attach_auth_context() -> None:
     g.token_payload = extract_bearer_token(request)
     g.current_user = None
@@ -67,9 +71,8 @@ def require_roles(*roles: RoleName) -> Callable:
         @wraps(view)
         def wrapper(*args, **kwargs):
             current_user = get_current_user()
-            allowed = {role.value for role in roles}
-            user_role = current_user.role.name
-            print(f"[DEBUG require_roles] user_role={user_role!r} allowed={allowed} match={user_role in allowed}")
+            allowed = {normalize_role_name(role.value) for role in roles}
+            user_role = normalize_role_name(current_user.role.name)
             if roles and user_role not in allowed:
                 raise ApiError("No cuentas con permisos para esta accion.", 403)
             return view(*args, **kwargs)
@@ -80,7 +83,8 @@ def require_roles(*roles: RoleName) -> Callable:
 
 
 def has_global_cav_access(current_user: User) -> bool:
-    return current_user.role.name in GLOBAL_CAV_ROLE_NAMES
+    allowed = {normalize_role_name(role_name) for role_name in GLOBAL_CAV_ROLE_NAMES}
+    return normalize_role_name(current_user.role.name) in allowed
 
 
 def ensure_cav_scope(current_user: User, cav_id: int | None) -> None:

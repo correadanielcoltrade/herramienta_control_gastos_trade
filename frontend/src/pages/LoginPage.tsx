@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 
 import { useAuth } from "../hooks/useAuth";
 
@@ -58,6 +58,12 @@ export function LoginPage() {
                 placeholder="********"
                 required
               />
+              <Link
+                to="/forgot-password"
+                className="mt-2 inline-block text-sm text-brand-600 hover:text-brand-700 font-medium"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </label>
             {loginError ? (
               <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">

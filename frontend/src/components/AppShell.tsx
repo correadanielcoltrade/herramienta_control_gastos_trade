@@ -15,8 +15,8 @@ type NavItem = {
 
 const navigation: NavItem[] = [
   { to: "/", label: "Dashboard", icon: BarChart3, module: "dashboard" },
-  { to: "/scan", label: "Recibo de inventario de gastos", icon: QrCode, module: "scan" },
   { to: "/abastecimiento", label: "Abastecimiento", icon: PackagePlus, module: "supply" },
+  { to: "/scan", label: "Recibo de inventario de gastos", icon: QrCode, module: "scan" },
   { to: "/legalizacion", label: "Legalizacion", icon: ClipboardCheck, module: "legalization" },
   { to: "/admin", label: "Admin", icon: Shield, module: "admin" },
 ];

@@ -25,16 +25,15 @@ const rolePermissionsMatrix: Record<RoleName, RolePermissions> = {
   },
   "Trade Leader": {
     dashboard: ["read"],
-    scan: ["read"],
-    legalization: ["read"],
-    admin: ["read", "create", "edit"],
+    scan: ["read", "create", "edit", "delete"],
+    legalization: ["read", "create", "edit", "delete"],
+    admin: ["read", "create", "edit", "delete"],
   },
-  // Trade es alias de Trade Leader (compatibilidad con BD actual)
   Trade: {
     dashboard: ["read"],
-    scan: ["read"],
-    legalization: ["read"],
-    admin: ["read", "create", "edit"],
+    scan: ["read", "create", "edit", "delete"],
+    legalization: ["read", "create", "edit", "delete"],
+    admin: ["read", "create", "edit", "delete"],
   },
   Asesor: {
     dashboard: ["read"],
@@ -59,14 +58,25 @@ const globalCavRoles: RoleName[] = [
 ];
 
 // Roles de solo consulta (no pueden crear, editar ni eliminar)
-const readOnlyRoles: RoleName[] = ["Quality", "Trade", "Trade Leader"];
+const readOnlyRoles: RoleName[] = ["Quality"];
+
+function normalizeRoleName(roleName?: string | null) {
+  return roleName?.trim().replace(/\s+/g, " ").toLowerCase() ?? "";
+}
+
+function findRoleName(roleName: RoleName | null | undefined): RoleName | null {
+  const normalized = normalizeRoleName(roleName);
+  return (Object.keys(rolePermissionsMatrix) as RoleName[]).find((role) => normalizeRoleName(role) === normalized) ?? null;
+}
 
 export function hasGlobalCavAccess(roleName?: RoleName | null) {
-  return roleName ? globalCavRoles.includes(roleName) : false;
+  const matchedRole = findRoleName(roleName);
+  return matchedRole ? globalCavRoles.includes(matchedRole) : false;
 }
 
 export function isReadOnlyRole(roleName?: RoleName | null) {
-  return roleName ? readOnlyRoles.includes(roleName) : false;
+  const matchedRole = findRoleName(roleName);
+  return matchedRole ? readOnlyRoles.includes(matchedRole) : false;
 }
 
 // Verifica si un rol tiene acceso a un modulo (cualquier accion)
@@ -74,8 +84,9 @@ export function canAccessModule(
   roleName: RoleName | null | undefined,
   moduleName: ModuleName,
 ): boolean {
-  if (!roleName) return false;
-  const perms = rolePermissionsMatrix[roleName];
+  const matchedRole = findRoleName(roleName);
+  if (!matchedRole) return false;
+  const perms = rolePermissionsMatrix[matchedRole];
   if (!perms) return false;
   return Boolean(perms[moduleName] && perms[moduleName]!.length > 0);
 }
@@ -86,8 +97,9 @@ export function hasPermission(
   moduleName: ModuleName,
   action: PermissionAction,
 ): boolean {
-  if (!roleName) return false;
-  const perms = rolePermissionsMatrix[roleName];
+  const matchedRole = findRoleName(roleName);
+  if (!matchedRole) return false;
+  const perms = rolePermissionsMatrix[matchedRole];
   if (!perms) return false;
   return perms[moduleName]?.includes(action) ?? false;
 }
@@ -130,15 +142,16 @@ export function canManageUsers(roleName?: RoleName | null) {
   return hasPermission(roleName, "admin", "create");
 }
 
-// Para Trade / Trade Leader: solo puede gestionar usuarios con rol Asesor, Trade o Trade Leader
 export function canManageRole(
   managerRole: RoleName | null | undefined,
   targetRole: RoleName,
 ): boolean {
-  if (!managerRole) return false;
-  if (managerRole === "SuperAdmin") return true;
-  if (managerRole === "Trade Leader" || managerRole === "Trade") {
-    return targetRole === "Asesor" || targetRole === "Trade" || targetRole === "Trade Leader";
+  const manager = findRoleName(managerRole);
+  const target = findRoleName(targetRole);
+  if (!manager || !target) return false;
+  if (manager === "SuperAdmin") return true;
+  if (manager === "Trade" || manager === "Trade Leader") {
+    return target === "Trade" || target === "Asesor" || target === "Supernumerario";
   }
   return false;
 }

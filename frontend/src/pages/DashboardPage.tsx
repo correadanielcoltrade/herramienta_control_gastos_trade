@@ -14,16 +14,8 @@ import { StatCard } from "../components/StatCard";
 import { useAuth } from "../hooks/useAuth";
 import type { DashboardFilters, DashboardPoint, SerialStatus, SupplyFilters } from "../types";
 import { hasGlobalCavAccess } from "../utils/access";
+import { formatSerialStatus, serialStatusOptions } from "../utils/status";
 
-const statusOptions: SerialStatus[] = [
-  "enviado",
-  "recibido",
-  "disponible",
-  "gastado",
-  "legalizado",
-  "duplicado",
-  "pendiente",
-];
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 function buildWorksheet(rows: Array<Array<number | string>>) {
@@ -329,10 +321,19 @@ export function DashboardPage() {
       {
         name: "Pendientes",
         rows: [
-          ["serial", "descripcion_producto", "fecha_abastecimiento", "dias_pendiente", "cav", "centro_costos"],
+          [
+            "serial",
+            "descripcion_producto",
+            "numero_guia",
+            "fecha_abastecimiento",
+            "dias_pendiente",
+            "cav",
+            "centro_costos",
+          ],
           ...pendingSupplies.map((item) => [
             item.serial,
             item.descripcion_producto,
+            item.numero_guia ?? "",
             formatDashboardDate(item.fecha_envio),
             getPendingDays(item.fecha_envio),
             item.cav?.nombre_cav ?? "",
@@ -355,10 +356,11 @@ export function DashboardPage() {
           [
             "fecha",
             "serial",
-            "tipo_inventario",
+            "tipo_gasto",
             "tipo_uso",
             "cliente_asesor",
             "documento_cliente",
+            "numero_factura",
             "asesor_responsable",
             "registrado_por",
             "cav",
@@ -370,6 +372,7 @@ export function DashboardPage() {
             item.tipo_uso,
             item.cliente_asesor,
             item.documento_cliente ?? "",
+            item.numero_factura ?? "",
             item.asesor_responsable,
             item.registrado_por,
             item.cav?.nombre_cav ?? "",
@@ -395,7 +398,7 @@ export function DashboardPage() {
             formatDashboardDate(item.last_movement_at),
             getPendingDays(item.last_movement_at),
             item.cav?.nombre_cav ?? "",
-            item.current_status,
+            formatSerialStatus(item.current_status),
           ]),
         ],
       },
@@ -412,7 +415,7 @@ export function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
         <StatCard label="Total seriales" value={summary?.total_seriales ?? 0} />
         <StatCard label="CAV visibles" value={cavsQuery.data?.length ?? 0} tone="slate" />
-        <StatCard label="Enviados" value={summary?.enviados ?? 0} tone="slate" />
+        <StatCard label="En transito" value={summary?.enviados ?? 0} tone="slate" />
         <StatCard label="Disponibles" value={summary?.disponibles ?? 0} tone="accent" />
         <StatCard label="Legalizados" value={summary?.legalizados ?? 0} tone="slate" />
         <StatCard label="Duplicados" value={summary?.duplicados ?? 0} tone="brand" />
@@ -450,9 +453,9 @@ export function DashboardPage() {
             className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
           >
             <option value="">Todos los estados</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
+            {serialStatusOptions.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
               </option>
             ))}
           </select>
@@ -517,7 +520,7 @@ export function DashboardPage() {
 
       <Panel
         title="Abastecidos pendientes por recibir"
-        subtitle="Seriales enviados que aun no tienen recibo confirmado. Esta tabla respeta CAV, rango de fechas y usuario; el estado se fija en enviados."
+        subtitle="Seriales en transito que aun no tienen recibo confirmado. Esta tabla respeta CAV, rango de fechas y usuario; el estado se fija en transito."
       >
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -546,6 +549,7 @@ export function DashboardPage() {
                   <tr>
                     <th className="px-4 py-3 font-semibold">Serial</th>
                     <th className="px-4 py-3 font-semibold">Producto</th>
+                    <th className="px-4 py-3 font-semibold">Numero de guia</th>
                     <th className="px-4 py-3 font-semibold">Fecha abastecimiento</th>
                     <th className="px-4 py-3 font-semibold">Dias pendiente</th>
                     <th className="px-4 py-3 font-semibold">CAV</th>
@@ -555,7 +559,7 @@ export function DashboardPage() {
                 <tbody className="divide-y divide-slate-100">
                   {pendingSuppliesQuery.isLoading ? (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>
                         Cargando seriales pendientes...
                       </td>
                     </tr>
@@ -564,6 +568,7 @@ export function DashboardPage() {
                       <tr key={item.id} className="transition hover:bg-slate-50/70">
                         <td className="px-4 py-4 font-medium text-slate-900">{item.serial}</td>
                         <td className="px-4 py-4">{item.descripcion_producto}</td>
+                        <td className="px-4 py-4">{item.numero_guia ?? "Sin guia"}</td>
                         <td className="px-4 py-4">{formatDashboardDate(item.fecha_envio)}</td>
                         <td className="px-4 py-4">
                           <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
@@ -576,7 +581,7 @@ export function DashboardPage() {
                     ))
                   ) : (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>
                         No hay seriales abastecidos pendientes por recibir con los filtros actuales.
                       </td>
                     </tr>
@@ -738,15 +743,16 @@ export function DashboardPage() {
 
           <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
             <div className="overflow-x-auto">
-              <table className="min-w-[1120px] divide-y divide-slate-200 text-sm text-slate-600">
+              <table className="min-w-[1240px] divide-y divide-slate-200 text-sm text-slate-600">
                 <thead className="bg-slate-50/80 text-left text-xs uppercase tracking-[0.18em] text-slate-500">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Fecha</th>
                     <th className="px-4 py-3 font-semibold">Serial</th>
-                    <th className="px-4 py-3 font-semibold">Tipo de inventario</th>
+                    <th className="px-4 py-3 font-semibold">Tipo de gasto</th>
                     <th className="px-4 py-3 font-semibold">Tipo de uso</th>
                     <th className="px-4 py-3 font-semibold">Cliente/Asesor</th>
                     <th className="px-4 py-3 font-semibold">Documento cliente</th>
+                    <th className="px-4 py-3 font-semibold">N° Factura</th>
                     <th className="px-4 py-3 font-semibold">Asesor responsable</th>
                     <th className="px-4 py-3 font-semibold">Registrado por</th>
                     <th className="px-4 py-3 font-semibold">CAV</th>
@@ -755,7 +761,7 @@ export function DashboardPage() {
                 <tbody className="divide-y divide-slate-100">
                   {legalizedSerialsQuery.isLoading ? (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={9}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={10}>
                         Cargando seriales legalizados...
                       </td>
                     </tr>
@@ -768,6 +774,7 @@ export function DashboardPage() {
                         <td className="px-4 py-4">{item.tipo_uso}</td>
                         <td className="px-4 py-4">{item.cliente_asesor}</td>
                         <td className="px-4 py-4">{item.documento_cliente ?? "N/A"}</td>
+                        <td className="px-4 py-4">{item.numero_factura ?? "N/A"}</td>
                         <td className="px-4 py-4">{item.asesor_responsable}</td>
                         <td className="px-4 py-4">{item.registrado_por}</td>
                         <td className="px-4 py-4">{item.cav?.nombre_cav ?? "Sin CAV"}</td>
@@ -775,7 +782,7 @@ export function DashboardPage() {
                     ))
                   ) : (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={9}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={10}>
                         No hay seriales legalizados con los filtros actuales.
                       </td>
                     </tr>

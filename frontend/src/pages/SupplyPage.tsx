@@ -10,8 +10,9 @@ import { serialsApi } from "../api/serials.api";
 import { Panel } from "../components/Panel";
 import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../hooks/useAuth";
-import type { SupplyFilters, SupplyPayload, SupplyRecord, User } from "../types";
+import type { SerialStatus, SupplyFilters, SupplyPayload, SupplyRecord, User } from "../types";
 import { canManageSupplies, hasGlobalCavAccess } from "../utils/access";
+import { formatSerialStatus, serialStatusOptions } from "../utils/status";
 
 const inputClassName =
   "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100/70";
@@ -22,6 +23,7 @@ const modalInputClassName =
 type SupplyFormState = {
   serial: string;
   descripcion_producto: string;
+  numero_guia: string;
   centro_costos_cav: string;
   cav_id: string;
   fecha_envio: string;
@@ -33,6 +35,7 @@ type SupplyFilterState = {
   producto: string;
   serial: string;
   start_date: string;
+  status: "" | SerialStatus;
 };
 
 type BulkImportSummary = {
@@ -53,7 +56,7 @@ interface SupplyModalFieldProps extends PropsWithChildren {
   label: string;
 }
 
-const importTemplateHeaders = ["serial", "descripcion_producto", "fecha_envio", "nombre_cav"];
+const importTemplateHeaders = ["serial", "descripcion_producto", "numero_guia", "fecha_envio", "nombre_cav"];
 
 function getErrorMessage(error: unknown, fallback: string) {
   return (
@@ -158,6 +161,7 @@ function getInitialForm(user?: User | null): SupplyFormState {
   return {
     serial: "",
     descripcion_producto: "",
+    numero_guia: "",
     centro_costos_cav: "",
     cav_id: hasGlobalCavAccess(user?.role.name) ? "" : String(user?.cav_id ?? ""),
     fecha_envio: getTodayInputValue(),
@@ -171,6 +175,7 @@ function getInitialFilters(user?: User | null): SupplyFilterState {
     producto: "",
     serial: "",
     start_date: "",
+    status: "",
   };
 }
 
@@ -178,6 +183,7 @@ function toPayload(form: SupplyFormState): SupplyPayload {
   return {
     serial: form.serial,
     descripcion_producto: form.descripcion_producto,
+    numero_guia: form.numero_guia,
     cav_id: Number(form.cav_id),
     centro_costos_cav: form.centro_costos_cav,
     fecha_envio: toSupplyIso(form.fecha_envio),
@@ -191,6 +197,7 @@ function toSupplyFilters(filters: SupplyFilterState): SupplyFilters {
     producto: filters.producto.trim() || undefined,
     serial: filters.serial.trim() || undefined,
     start_date: filters.start_date || undefined,
+    status: filters.status || undefined,
   };
 }
 
@@ -198,6 +205,7 @@ function toEditForm(record: SupplyRecord): SupplyFormState {
   return {
     serial: record.serial,
     descripcion_producto: record.descripcion_producto,
+    numero_guia: record.numero_guia ?? "",
     centro_costos_cav: record.centro_costos_cav,
     cav_id: String(record.cav_id),
     fecha_envio: fromSupplyIso(record.fecha_envio),
@@ -298,6 +306,18 @@ function SupplyForm({
               placeholder="Describe el producto"
               value={form.descripcion_producto}
               onChange={(event) => onFieldChange("descripcion_producto", event.target.value)}
+              required
+            />
+          </SupplyModalField>
+        </div>
+
+        <div className="md:col-span-2">
+          <SupplyModalField label="Numero de guia">
+            <input
+              className={modalInputClassName}
+              placeholder="Ingresa el numero de guia"
+              value={form.numero_guia}
+              onChange={(event) => onFieldChange("numero_guia", event.target.value)}
               required
             />
           </SupplyModalField>
@@ -586,6 +606,7 @@ export function SupplyPage() {
           ...supplies.map((item) => [
             item.serial,
             item.descripcion_producto,
+            item.numero_guia ?? "",
             fromSupplyIso(item.fecha_envio),
             item.cav?.nombre_cav ?? "",
           ]),
@@ -631,6 +652,7 @@ export function SupplyPage() {
       const { headers, rows } = parseExcelRows(rawRows);
       const cavNameIndex = headers.indexOf("nombre_cav");
       const descriptionIndex = headers.indexOf("descripcion_producto");
+      const guideNumberIndex = headers.indexOf("numero_guia");
       const dateIndex = headers.indexOf("fecha_envio");
       const serialIndex = headers.indexOf("serial");
       const errorLines: string[] = [];
@@ -641,16 +663,17 @@ export function SupplyPage() {
         const lineNumber = index + 2;
         const serial = String(row[serialIndex] ?? "").trim();
         const descripcionProducto = String(row[descriptionIndex] ?? "").trim();
+        const numeroGuia = String(row[guideNumberIndex] ?? "").trim();
         const fechaEnvio = String(row[dateIndex] ?? "").trim();
         const cavName = String(row[cavNameIndex] ?? "").trim();
 
-        if (![serial, descripcionProducto, fechaEnvio, cavName].some(Boolean)) {
+        if (![serial, descripcionProducto, numeroGuia, fechaEnvio, cavName].some(Boolean)) {
           continue;
         }
 
         try {
-          if (!serial || !descripcionProducto || !fechaEnvio || !cavName) {
-            throw new Error("Debes completar serial, descripcion_producto, fecha_envio y nombre_cav.");
+          if (!serial || !descripcionProducto || !numeroGuia || !fechaEnvio || !cavName) {
+            throw new Error("Debes completar serial, descripcion_producto, numero_guia, fecha_envio y nombre_cav.");
           }
 
           const selectedCav = cavByName.get(normalizeCavName(cavName));
@@ -661,6 +684,7 @@ export function SupplyPage() {
           await serialsApi.createSupply({
             serial,
             descripcion_producto: descripcionProducto,
+            numero_guia: numeroGuia,
             cav_id: selectedCav.id,
             centro_costos_cav: selectedCav.centro_costos,
             fecha_envio: normalizeImportDate(fechaEnvio),
@@ -702,7 +726,7 @@ export function SupplyPage() {
         subtitle="Consulta todos los abastecimientos registrados y sigue su estado aunque el serial ya haya avanzado en el flujo."
       >
         <div className="space-y-4">
-          <div className="grid gap-4 rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-4 rounded-[28px] border border-slate-200 bg-slate-50/70 p-4 md:grid-cols-2 xl:grid-cols-6">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Fecha inicial</span>
               <input
@@ -755,12 +779,31 @@ export function SupplyPage() {
                 onChange={(event) => setFilters((current) => ({ ...current, serial: event.target.value }))}
               />
             </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Estado</span>
+              <select
+                className={inputClassName}
+                value={filters.status}
+                onChange={(event) =>
+                  setFilters((current) => ({ ...current, status: event.target.value as "" | SerialStatus }))
+                }
+              >
+                <option value="">Todos los estados</option>
+                {serialStatusOptions.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h4 className="text-base font-semibold text-slate-900">Tabla de abastecimientos</h4>
-              <p className="mt-1 text-sm text-slate-600">Cada fila muestra serial, producto, fecha, CAV y centro de costo.</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Cada fila muestra serial, producto, guia, fecha, CAV y centro de costo.
+              </p>
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                 {selectedSupplyIds.length} seleccionados de {supplies.length} visibles
               </p>
@@ -884,6 +927,7 @@ export function SupplyPage() {
                     ) : null}
                     <th className="px-4 py-3 font-semibold">Serial</th>
                     <th className="px-4 py-3 font-semibold">Producto</th>
+                    <th className="px-4 py-3 font-semibold">Numero de guia</th>
                     <th className="px-4 py-3 font-semibold">Fecha</th>
                     <th className="px-4 py-3 font-semibold">CAV</th>
                     <th className="px-4 py-3 font-semibold">Centro de costo</th>
@@ -894,7 +938,7 @@ export function SupplyPage() {
                 <tbody className="divide-y divide-slate-100">
                   {suppliesQuery.isLoading ? (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 8 : 6}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 9 : 7}>
                         Cargando abastecimientos...
                       </td>
                     </tr>
@@ -914,12 +958,13 @@ export function SupplyPage() {
                         ) : null}
                         <td className="px-4 py-4 font-medium text-slate-900">{item.serial}</td>
                         <td className="px-4 py-4">{item.descripcion_producto}</td>
+                        <td className="px-4 py-4">{item.numero_guia ?? "Sin guia"}</td>
                         <td className="px-4 py-4">{formatSupplyDate(item.fecha_envio)}</td>
                         <td className="px-4 py-4">{item.cav?.nombre_cav ?? "Sin CAV"}</td>
                         <td className="px-4 py-4">{item.centro_costos_cav}</td>
                         <td className="px-4 py-4">
                           <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-                            {item.current_status}
+                            {formatSerialStatus(item.current_status)}
                           </span>
                         </td>
                         {supplyManagementEnabled ? (
@@ -949,7 +994,7 @@ export function SupplyPage() {
                     ))
                   ) : (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 8 : 6}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 9 : 7}>
                         No hay abastecimientos que coincidan con los filtros actuales.
                       </td>
                     </tr>

@@ -5,9 +5,11 @@ import { AppShell } from "./components/AppShell";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminPage } from "./pages/AdminPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { LegalizationPage } from "./pages/LegalizationPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ScanPage } from "./pages/ScanPage";
 import { SupplyPage } from "./pages/SupplyPage";
 
@@ -19,6 +21,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route element={<ProtectedRoute module="dashboard" />}>
             <Route element={<AppShell />}>
               <Route path="/" element={<DashboardPage />} />

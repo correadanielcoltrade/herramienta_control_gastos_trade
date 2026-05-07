@@ -17,6 +17,7 @@ class Legalization(Base, TimestampMixin):
     cantidad: Mapped[int] = mapped_column(nullable=False)
     cliente_asesor: Mapped[str] = mapped_column(String(255), nullable=False)
     documento_cliente: Mapped[str | None] = mapped_column(String(120))
+    numero_factura: Mapped[str | None] = mapped_column(String(120))
     firma: Mapped[str] = mapped_column(Text, nullable=False)
     asesor_responsable: Mapped[str] = mapped_column(String(255), nullable=False)
     observaciones: Mapped[str | None] = mapped_column(Text)

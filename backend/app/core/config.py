@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
     flask_debug: bool = False
+    mail_from: str = "noreply@example.com"
+    mail_username: str = ""
+    mail_password: str = ""
+    mail_server: str = "smtp.gmail.com"
+    mail_port: int = 587
+    password_reset_expire_minutes: int = 30
 
     @computed_field  # type: ignore[prop-decorator]
     @property

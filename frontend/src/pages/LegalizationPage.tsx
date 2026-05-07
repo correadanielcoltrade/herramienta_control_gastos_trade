@@ -9,6 +9,27 @@ import { PageTitle } from "../components/PageTitle";
 import { QRScanner } from "../components/QRScanner";
 import { SignaturePad } from "../components/SignaturePad";
 import { useAuth } from "../hooks/useAuth";
+import { formatSerialStatus } from "../utils/status";
+
+const EXPENSE_TYPES = [
+  "Garantía Neta",
+  "Pérdida en Instalación",
+  "Prueba de Funcionamiento",
+  "Capacitación",
+  "Cortesía",
+];
+
+const USAGE_TYPE_OPTIONS: Record<string, string[]> = {
+  "Garantía Neta": ["Burbujas", "Tamaño"],
+  "Pérdida en Instalación": ["Pérdida en Instalación"],
+  "Prueba de Funcionamiento": [
+    "Daño Asesor en Instalación",
+    "Daño por la Máquina",
+    "Inventario en Mal Estado",
+  ],
+  "Capacitación": ["Capacitación"],
+  "Cortesía": ["Cortesía"],
+};
 
 type LegalizationFormState = {
   asesor_responsable: string;
@@ -16,6 +37,7 @@ type LegalizationFormState = {
   documento_cliente: string;
   fecha: string;
   firma: string;
+  numero_factura: string;
   serial: string;
   tipo_inventario: string;
   tipo_uso: string;
@@ -68,6 +90,7 @@ function getInitialForm(asesorResponsable?: string | null): LegalizationFormStat
     documento_cliente: "",
     fecha: getTodayInputValue(),
     firma: "",
+    numero_factura: "",
     serial: "",
     tipo_inventario: "",
     tipo_uso: "",
@@ -122,10 +145,18 @@ export function LegalizationPage() {
   const normalizedFormSerial = form.serial.trim();
   const exactAvailableSerial =
     serialAvailabilityQuery.data?.find((item) => item.serial.trim() === normalizedFormSerial) ?? null;
-  const canSubmit = Boolean(exactAvailableSerial && form.firma);
+  const canSubmit = Boolean(exactAvailableSerial && form.firma && form.numero_factura.trim());
 
   function updateForm<Field extends keyof LegalizationFormState>(field: Field, value: LegalizationFormState[Field]) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => {
+      const updated = { ...current, [field]: value };
+      // Si cambia tipo_inventario, resetear tipo_uso y auto-llenar si hay una sola opción
+      if (field === "tipo_inventario" && value) {
+        const usageOptions = USAGE_TYPE_OPTIONS[value as string] ?? [];
+        updated.tipo_uso = usageOptions.length === 1 ? usageOptions[0] : "";
+      }
+      return updated;
+    });
   }
 
   function handleDetectedSerial(value: string) {
@@ -154,6 +185,7 @@ export function LegalizationPage() {
         tipo_uso: form.tipo_uso,
         cliente_asesor: form.cliente_asesor,
         documento_cliente: form.documento_cliente.trim() || undefined,
+        numero_factura: form.numero_factura.trim(),
         firma: form.firma,
         asesor_responsable: form.asesor_responsable,
         fecha: toLegalizationIso(form.fecha),
@@ -186,7 +218,7 @@ export function LegalizationPage() {
             item.serial,
             item.descripcion_producto ?? "",
             item.cav?.nombre_cav ?? "",
-            item.current_status,
+            formatSerialStatus(item.current_status),
           ]),
         ],
       },
@@ -206,10 +238,11 @@ export function LegalizationPage() {
           [
             "fecha",
             "serial",
-            "tipo_inventario",
+            "tipo_gasto",
             "tipo_uso",
             "cliente_asesor",
             "documento_cliente",
+            "numero_factura",
             "asesor_responsable",
             "registrado_por",
             "cav",
@@ -221,6 +254,7 @@ export function LegalizationPage() {
             item.tipo_uso,
             item.cliente_asesor,
             item.documento_cliente ?? "",
+            item.numero_factura ?? "",
             item.asesor_responsable,
             item.registrado_por,
             item.cav?.nombre_cav ?? "",
@@ -281,25 +315,46 @@ export function LegalizationPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-slate-700">Tipo de inventario</span>
-                <input
+                <span className="mb-2 block text-sm font-medium text-slate-700">Tipo de gasto</span>
+                <select
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3"
-                  placeholder="Tipo de inventario"
                   value={form.tipo_inventario}
                   onChange={(event) => updateForm("tipo_inventario", event.target.value)}
                   required
-                />
+                >
+                  <option value="">-- Seleccionar tipo de gasto --</option>
+                  {EXPENSE_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Tipo de uso</span>
-                <input
-                  className="w-full rounded-2xl border border-slate-200 px-4 py-3"
-                  placeholder="Tipo de uso"
-                  value={form.tipo_uso}
-                  onChange={(event) => updateForm("tipo_uso", event.target.value)}
-                  required
-                />
+                {form.tipo_inventario ? (
+                  <select
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                    value={form.tipo_uso}
+                    onChange={(event) => updateForm("tipo_uso", event.target.value)}
+                    required
+                    disabled={USAGE_TYPE_OPTIONS[form.tipo_inventario]?.length === 1}
+                  >
+                    <option value="">-- Seleccionar tipo de uso --</option>
+                    {(USAGE_TYPE_OPTIONS[form.tipo_inventario] ?? []).map((usage) => (
+                      <option key={usage} value={usage}>
+                        {usage}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 bg-slate-50 text-slate-500"
+                    placeholder="Selecciona tipo de gasto primero"
+                    disabled
+                  />
+                )}
               </label>
 
               <label className="block">
@@ -323,7 +378,18 @@ export function LegalizationPage() {
                 />
               </label>
 
-              <label className="block md:col-span-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">N° Factura</span>
+                <input
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3"
+                  placeholder="Numero de factura"
+                  value={form.numero_factura}
+                  onChange={(event) => updateForm("numero_factura", event.target.value)}
+                  required
+                />
+              </label>
+
+              <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Asesor responsable</span>
                 <input
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3"
@@ -434,15 +500,16 @@ export function LegalizationPage() {
         </div>
         <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
           <div className="overflow-x-auto">
-            <table className="min-w-[1120px] divide-y divide-slate-200 text-sm text-slate-600">
+            <table className="min-w-[1240px] divide-y divide-slate-200 text-sm text-slate-600">
               <thead className="bg-slate-50/80 text-left text-xs uppercase tracking-[0.18em] text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Fecha</th>
                   <th className="px-4 py-3 font-semibold">Serial</th>
-                  <th className="px-4 py-3 font-semibold">Tipo de inventario</th>
+                  <th className="px-4 py-3 font-semibold">Tipo de gasto</th>
                   <th className="px-4 py-3 font-semibold">Tipo de uso</th>
                   <th className="px-4 py-3 font-semibold">Cliente/Asesor</th>
                   <th className="px-4 py-3 font-semibold">Documento cliente</th>
+                  <th className="px-4 py-3 font-semibold">N° Factura</th>
                   <th className="px-4 py-3 font-semibold">Asesor responsable</th>
                   <th className="px-4 py-3 font-semibold">Registrado por</th>
                   <th className="px-4 py-3 font-semibold">CAV</th>
@@ -452,7 +519,7 @@ export function LegalizationPage() {
               <tbody className="divide-y divide-slate-100">
                 {legalizationsQuery.isLoading ? (
                   <tr>
-                    <td className="px-4 py-8 text-center text-slate-500" colSpan={10}>
+                    <td className="px-4 py-8 text-center text-slate-500" colSpan={11}>
                       Cargando legalizaciones...
                     </td>
                   </tr>
@@ -465,6 +532,7 @@ export function LegalizationPage() {
                       <td className="px-4 py-4">{item.tipo_uso}</td>
                       <td className="px-4 py-4">{item.cliente_asesor}</td>
                       <td className="px-4 py-4">{item.documento_cliente ?? "N/A"}</td>
+                      <td className="px-4 py-4">{item.numero_factura ?? "N/A"}</td>
                       <td className="px-4 py-4">{item.asesor_responsable}</td>
                       <td className="px-4 py-4">{item.registrado_por}</td>
                       <td className="px-4 py-4">{item.cav?.nombre_cav ?? "Sin CAV"}</td>
@@ -479,7 +547,7 @@ export function LegalizationPage() {
                   ))
                 ) : (
                   <tr>
-                    <td className="px-4 py-8 text-center text-slate-500" colSpan={10}>
+                    <td className="px-4 py-8 text-center text-slate-500" colSpan={11}>
                       Aun no hay seriales legalizados para mostrar.
                     </td>
                   </tr>

@@ -22,4 +22,5 @@ class User(Base, TimestampMixin):
     legalizaciones: Mapped[list["Legalization"]] = relationship(back_populates="user")
     serial_movements: Mapped[list["SerialMovement"]] = relationship(back_populates="user")
     audit_logs: Mapped[list["AuditLog"]] = relationship(back_populates="user")
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(back_populates="user")
 

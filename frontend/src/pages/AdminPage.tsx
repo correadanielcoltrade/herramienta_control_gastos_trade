@@ -7,14 +7,22 @@ import { createPortal } from "react-dom";
 import { cavsApi } from "../api/cavs.api";
 import { usersApi } from "../api/users.api";
 import { PageTitle } from "../components/PageTitle";
-import type { Cav, User } from "../types";
+import { useAuth } from "../hooks/useAuth";
+import type { Cav, Role, RoleName, User } from "../types";
+import { canManageRole } from "../utils/access";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const TRADE_CREATABLE_ROLES: RoleName[] = ["Asesor", "Trade"];
+const TRADE_CREATABLE_ROLE_KEYS = new Set(TRADE_CREATABLE_ROLES.map((role) => normalizeRoleLabel(role)));
 
 function getErrorMessage(error: unknown, fallback: string) {
   return (
     (error as { response?: { data?: { detail?: string } } } | null)?.response?.data?.detail ?? fallback
   );
+}
+
+function normalizeRoleLabel(roleName: string) {
+  return roleName.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function paginateRows<T>(rows: T[], page: number, pageSize: number) {
@@ -293,8 +301,18 @@ function filterUsers(users: User[], search: string) {
   );
 }
 
+function filterCreatableRoles(roles: Role[], managerRole?: RoleName | null) {
+  if (managerRole === "SuperAdmin") {
+    return roles;
+  }
+  return roles.filter((role) => TRADE_CREATABLE_ROLE_KEYS.has(normalizeRoleLabel(role.name)));
+}
+
 export function AdminPage() {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
+  const currentRole = currentUser?.role.name;
+  const isSuperAdmin = currentRole === "SuperAdmin";
   const cavsQuery = useQuery({ queryKey: ["cavs"], queryFn: cavsApi.list });
   const usersQuery = useQuery({ queryKey: ["users"], queryFn: usersApi.list });
   const rolesQuery = useQuery({ queryKey: ["roles"], queryFn: usersApi.listRoles });
@@ -401,6 +419,8 @@ export function AdminPage() {
   const cavPagination = paginateRows(filteredCavs, cavPage, cavPageSize);
   const filteredUsers = filterUsers(usersQuery.data ?? [], userSearch);
   const userPagination = paginateRows(filteredUsers, userPage, userPageSize);
+  const editableRoles = (rolesQuery.data ?? []).filter((role) => canManageRole(currentRole, role.name));
+  const creatableRoles = filterCreatableRoles(editableRoles, currentRole);
 
   function closeCavEditModal() {
     setEditingCavId(null);
@@ -435,7 +455,7 @@ export function AdminPage() {
       nombre_usuario: "",
       correo: "",
       password: "",
-      role_id: "",
+      role_id: creatableRoles.length === 1 ? String(creatableRoles[0].id) : "",
       cav_id: "",
       is_active: true,
     });
@@ -548,44 +568,45 @@ export function AdminPage() {
       />
 
       <div className="space-y-6">
-        <AdminModule
-          count={cavsQuery.data?.length ?? 0}
-          icon={Building2}
-          isOpen={isCavsOpen}
-          subtitle="Crea, edita y consulta centros de atencion desde una sola vista."
-          title="Gestion de CAVs"
-          onToggle={() => setIsCavsOpen((current) => !current)}
-        >
-          <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
-            <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h4 className="text-base font-semibold text-slate-900">Tabla de CAVs</h4>
-                <p className="mt-1 text-sm text-slate-600">Consulta y filtra los CAVs registrados.</p>
-              </div>
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
-                <div className="w-full md:max-w-sm">
-                  <SearchBar
-                    placeholder="Buscar por nombre o centro de costos"
-                    value={cavSearch}
-                    onChange={(value) => {
-                      setCavSearch(value);
-                      setCavPage(1);
-                    }}
-                  />
+        {isSuperAdmin ? (
+          <AdminModule
+            count={cavsQuery.data?.length ?? 0}
+            icon={Building2}
+            isOpen={isCavsOpen}
+            subtitle="Crea, edita y consulta centros de atencion desde una sola vista."
+            title="Gestion de CAVs"
+            onToggle={() => setIsCavsOpen((current) => !current)}
+          >
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+              <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h4 className="text-base font-semibold text-slate-900">Tabla de CAVs</h4>
+                  <p className="mt-1 text-sm text-slate-600">Consulta y filtra los CAVs registrados.</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={openCavCreateModal}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-2.5 font-medium text-white transition hover:bg-brand-700"
-                >
-                  <Plus size={16} />
-                  Nuevo CAV
-                </button>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
+                  <div className="w-full md:max-w-sm">
+                    <SearchBar
+                      placeholder="Buscar por nombre o centro de costos"
+                      value={cavSearch}
+                      onChange={(value) => {
+                        setCavSearch(value);
+                        setCavPage(1);
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={openCavCreateModal}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 py-2.5 font-medium text-white transition hover:bg-brand-700"
+                  >
+                    <Plus size={16} />
+                    Nuevo CAV
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
-              <table className="min-w-[720px] divide-y divide-slate-100">
+              <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+                <table className="min-w-[720px] divide-y divide-slate-100">
                   <thead className="bg-slate-50/80">
                     <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-500">
                       <th className="px-4 py-3 font-semibold">Nombre CAV</th>
@@ -633,23 +654,24 @@ export function AdminPage() {
                       </tr>
                     )}
                   </tbody>
-                </table>
-            </div>
+                  </table>
+              </div>
 
-            <PaginationFooter
-              itemLabel="CAVs"
-              page={cavPagination.safePage}
-              pageSize={cavPageSize}
-              totalItems={filteredCavs.length}
-              totalPages={cavPagination.totalPages}
-              onPageChange={setCavPage}
-              onPageSizeChange={(size) => {
-                setCavPageSize(size);
-                setCavPage(1);
-              }}
-            />
-          </div>
-        </AdminModule>
+              <PaginationFooter
+                itemLabel="CAVs"
+                page={cavPagination.safePage}
+                pageSize={cavPageSize}
+                totalItems={filteredCavs.length}
+                totalPages={cavPagination.totalPages}
+                onPageChange={setCavPage}
+                onPageSizeChange={(size) => {
+                  setCavPageSize(size);
+                  setCavPage(1);
+                }}
+              />
+            </div>
+          </AdminModule>
+        ) : null}
 
         <AdminModule
           count={usersQuery.data?.length ?? 0}
@@ -707,8 +729,11 @@ export function AdminPage() {
                         </td>
                       </tr>
                     ) : userPagination.pageRows.length > 0 ? (
-                      userPagination.pageRows.map((item) => (
-                        <tr key={item.id} className="transition hover:bg-slate-50/70">
+                      userPagination.pageRows.map((item) => {
+                        const canManageThisUser = canManageRole(currentRole, item.role.name);
+
+                        return (
+                          <tr key={item.id} className="transition hover:bg-slate-50/70">
                           <td className="px-4 py-4">
                             <p className="font-medium text-slate-900">{item.nombre_usuario}</p>
                           </td>
@@ -731,6 +756,7 @@ export function AdminPage() {
                               <button
                                 type="button"
                                 onClick={() => openUserEditModal(item)}
+                                disabled={!canManageThisUser}
                                 className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50"
                               >
                                 Editar
@@ -743,6 +769,7 @@ export function AdminPage() {
                                     payload: { is_active: !item.is_active },
                                   })
                                 }
+                                disabled={!canManageThisUser}
                                 className={`rounded-xl border px-3 py-2 text-sm font-medium transition ${
                                   item.is_active
                                     ? "border-rose-200 text-rose-600 hover:bg-rose-50"
@@ -753,8 +780,9 @@ export function AdminPage() {
                               </button>
                             </div>
                           </td>
-                        </tr>
-                      ))
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
@@ -887,7 +915,7 @@ export function AdminPage() {
                 required
               >
                 <option value="">Selecciona rol</option>
-                {rolesQuery.data?.map((role) => (
+                {editableRoles.map((role) => (
                   <option key={role.id} value={role.id}>
                     {role.name}
                   </option>
@@ -1037,7 +1065,7 @@ export function AdminPage() {
                 required
               >
                 <option value="">Selecciona rol</option>
-                {rolesQuery.data?.map((role) => (
+                {creatableRoles.map((role) => (
                   <option key={role.id} value={role.id}>
                     {role.name}
                   </option>
