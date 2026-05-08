@@ -21,12 +21,12 @@ const EXPENSE_TYPES = [
 
 const USAGE_TYPE_OPTIONS: Record<string, string[]> = {
   "Garantía Neta": ["Burbujas", "Tamaño"],
-  "Pérdida en Instalación": ["Pérdida en Instalación"],
-  "Prueba de Funcionamiento": [
+  "Pérdida en Instalación": [
     "Daño Asesor en Instalación",
     "Daño por la Máquina",
     "Inventario en Mal Estado",
   ],
+  "Prueba de Funcionamiento": ["Prueba de Funcionamiento"],
   "Capacitación": ["Capacitación"],
   "Cortesía": ["Cortesía"],
 };
