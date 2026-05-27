@@ -1,3 +1,6 @@
+import logging
+import traceback
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 from pydantic import ValidationError
@@ -20,7 +23,7 @@ def create_app() -> Flask:
         app,
         resources={
             r"/*": {
-                "origins": [settings.frontend_url],
+                "origins": settings.allowed_origins,
                 "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
                 "allow_headers": ["Content-Type", "Authorization"],
             }
@@ -48,8 +51,11 @@ def create_app() -> Flask:
     def handle_http_error(error: HTTPException):
         return jsonify({"detail": error.description}), error.code or 500
 
+    logging.basicConfig(level=logging.INFO)
+
     @app.errorhandler(Exception)
     def handle_unexpected_error(error: Exception):
+        app.logger.error("Unhandled exception: %s\n%s", error, traceback.format_exc())
         return jsonify({"detail": "Ocurrio un error interno en el servidor."}), 500
 
     @app.get("/health")

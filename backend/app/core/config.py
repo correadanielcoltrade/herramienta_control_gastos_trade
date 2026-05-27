@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     app_name: str = "MKP Serial Control"
     api_v1_prefix: str = "/api/v1"
     frontend_url: str = "http://localhost:5173"
+    cors_origins: str = ""
     database_url: str | None = None
     db_user: str = "root"
     db_password: str = "change-me"
@@ -34,6 +35,13 @@ class Settings(BaseSettings):
     mail_server: str = "smtp.gmail.com"
     mail_port: int = 587
     password_reset_expire_minutes: int = 30
+    mail_timeout_seconds: int = 10
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def allowed_origins(self) -> list[str]:
+        raw = self.cors_origins or self.frontend_url
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
     @computed_field  # type: ignore[prop-decorator]
     @property

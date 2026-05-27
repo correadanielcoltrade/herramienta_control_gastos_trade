@@ -14,10 +14,15 @@ from app.services.audit_service import register_audit_log
 cavs_bp = Blueprint("cavs", __name__)
 
 
-def normalize_cav_payload(nombre_cav: str, centro_costos: str) -> dict[str, str]:
+def normalize_cav_payload(
+    nombre_cav: str,
+    centro_costos: str,
+    regional: str | None = None,
+) -> dict[str, str | None]:
     return {
         "nombre_cav": nombre_cav.strip(),
         "centro_costos": centro_costos.strip(),
+        "regional": regional.strip() if regional else None,
     }
 
 
@@ -41,7 +46,7 @@ def create_cav():
     payload = parse_body(CAVCreate)
     db = get_db()
     current_user = get_current_user(db)
-    cav_data = normalize_cav_payload(payload.nombre_cav, payload.centro_costos)
+    cav_data = normalize_cav_payload(payload.nombre_cav, payload.centro_costos, payload.regional)
     existing_cav = db.scalar(
         select(CAV).where(func.lower(CAV.nombre_cav) == cav_data["nombre_cav"].lower())
     )
@@ -75,10 +80,11 @@ def update_cav(cav_id: int):
     if not cav:
         raise ApiError("CAV no encontrado.", 404)
     changes = payload.model_dump(exclude_unset=True)
-    if "nombre_cav" in changes or "centro_costos" in changes:
+    if "nombre_cav" in changes or "centro_costos" in changes or "regional" in changes:
         normalized = normalize_cav_payload(
             changes.get("nombre_cav", cav.nombre_cav),
             changes.get("centro_costos", cav.centro_costos),
+            changes.get("regional", cav.regional),
         )
         changes.update(
             {

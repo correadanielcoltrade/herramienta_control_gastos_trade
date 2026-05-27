@@ -28,6 +28,38 @@ from app.schemas.serial import (
 from app.services.audit_service import register_audit_log
 
 
+PRODUCTO_MATERIAL_MAP: dict[str, str] = {
+    "mate": "7018735",
+    "privacy": "7018734",
+    "blue light": "7015640",
+    "estandar": "7015490",
+}
+
+
+def resolve_material(descripcion_producto: str | None) -> str | None:
+    if not descripcion_producto:
+        return None
+    return PRODUCTO_MATERIAL_MAP.get(descripcion_producto.strip().lower())
+
+
+ESTADO_ENTREGA_PENDIENTE = "Pendiente de Entrega"
+ESTADO_ENTREGA_ENTREGADO = "Entregado por Transportadora"
+ESTADO_ENTREGA_VALIDOS = {ESTADO_ENTREGA_PENDIENTE, ESTADO_ENTREGA_ENTREGADO}
+
+
+def resolve_estado_entrega(value: str | None) -> str:
+    if not value:
+        return ESTADO_ENTREGA_PENDIENTE
+    cleaned = value.strip()
+    for option in ESTADO_ENTREGA_VALIDOS:
+        if cleaned.lower() == option.lower():
+            return option
+    raise ApiError(
+        f"Estado de entrega invalido. Opciones permitidas: {', '.join(sorted(ESTADO_ENTREGA_VALIDOS))}.",
+        400,
+    )
+
+
 def _serial_detail_stmt() -> Select[tuple[Serial]]:
     return select(Serial).options(joinedload(Serial.cav))
 
@@ -152,10 +184,13 @@ def serialize_supply(supply: Abastecimiento) -> SupplyRead:
         serial_id=supply.serial_id,
         serial=supply.serial.serial,
         descripcion_producto=supply.descripcion_producto,
+        material=supply.material,
         numero_guia=supply.numero_guia,
         cav_id=supply.cav_id,
         centro_costos_cav=supply.centro_costos_cav,
         fecha_envio=supply.fecha_envio,
+        fecha_entrega_pdv=supply.fecha_entrega_pdv,
+        estado_entrega=supply.estado_entrega or ESTADO_ENTREGA_PENDIENTE,
         current_status=supply.serial.current_status,
         cav=supply.serial.cav,
     )
@@ -251,10 +286,13 @@ def register_supply(
     supply = Abastecimiento(
         serial_id=serial_obj.id,
         descripcion_producto=payload.descripcion_producto,
+        material=resolve_material(payload.descripcion_producto),
         numero_guia=payload.numero_guia.strip(),
         cav_id=payload.cav_id,
         centro_costos_cav=centro_costos_cav,
         fecha_envio=payload.fecha_envio,
+        fecha_entrega_pdv=payload.fecha_entrega_pdv,
+        estado_entrega=resolve_estado_entrega(payload.estado_entrega),
         usuario_id=current_user.id,
     )
     db.add(supply)
@@ -360,10 +398,13 @@ def update_supply(
         serial_obj.cav_id = payload.cav_id
 
     supply.descripcion_producto = payload.descripcion_producto
+    supply.material = resolve_material(payload.descripcion_producto)
     supply.numero_guia = payload.numero_guia.strip()
     supply.cav_id = payload.cav_id
     supply.centro_costos_cav = centro_costos_cav
     supply.fecha_envio = payload.fecha_envio
+    supply.fecha_entrega_pdv = payload.fecha_entrega_pdv
+    supply.estado_entrega = resolve_estado_entrega(payload.estado_entrega)
 
     movement = db.scalar(
         select(SerialMovement)

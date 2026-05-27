@@ -1,5 +1,5 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint
 from sqlalchemy import select
@@ -58,7 +58,7 @@ def forgot_password():
 
     # Generar token único
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.utcnow() + timedelta(minutes=settings.password_reset_expire_minutes)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.password_reset_expire_minutes)
 
     reset_token = PasswordResetToken(
         user_id=user.id,
@@ -102,7 +102,7 @@ def reset_password():
     if reset_token.used:
         raise ApiError("Este token ya fue utilizado.", 400)
 
-    if datetime.utcnow() > reset_token.expires_at:
+    if datetime.now(timezone.utc) > reset_token.expires_at:
         raise ApiError("Token de recuperación expirado.", 400)
 
     user = db.get(User, reset_token.user_id)

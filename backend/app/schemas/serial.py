@@ -20,19 +20,25 @@ class SerialRead(ORMModel):
 class AbastecimientoCreate(BaseModel):
     serial: str = Field(min_length=2, max_length=120)
     descripcion_producto: str = Field(min_length=2, max_length=255)
+    material: str | None = Field(default=None, max_length=50)
     numero_guia: str = Field(min_length=1, max_length=120)
     cav_id: int
     centro_costos_cav: str = Field(min_length=2, max_length=120)
     fecha_envio: datetime
+    fecha_entrega_pdv: datetime | None = None
+    estado_entrega: str | None = Field(default=None, max_length=50)
 
 
 class AbastecimientoUpdate(BaseModel):
     serial: str = Field(min_length=2, max_length=120)
     descripcion_producto: str = Field(min_length=2, max_length=255)
+    material: str | None = Field(default=None, max_length=50)
     numero_guia: str = Field(min_length=1, max_length=120)
     cav_id: int
     centro_costos_cav: str = Field(min_length=2, max_length=120)
     fecha_envio: datetime
+    fecha_entrega_pdv: datetime | None = None
+    estado_entrega: str | None = Field(default=None, max_length=50)
 
 
 class SupplyRead(BaseModel):
@@ -40,10 +46,13 @@ class SupplyRead(BaseModel):
     serial_id: int
     serial: str
     descripcion_producto: str
+    material: str | None = None
     numero_guia: str | None = None
     cav_id: int
     centro_costos_cav: str
     fecha_envio: datetime
+    fecha_entrega_pdv: datetime | None = None
+    estado_entrega: str
     current_status: SerialStatus
     cav: CAVRead | None = None
 

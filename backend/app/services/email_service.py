@@ -58,8 +58,12 @@ class EmailService:
             # Agregar contenido
             msg.attach(MIMEText(html, "html"))
 
-            # Conectar y enviar
-            with smtplib.SMTP(settings.mail_server, settings.mail_port) as server:
+            # Conectar y enviar (con timeout para evitar bloqueos en producción)
+            with smtplib.SMTP(
+                settings.mail_server,
+                settings.mail_port,
+                timeout=settings.mail_timeout_seconds,
+            ) as server:
                 server.starttls()
                 server.login(settings.mail_username, settings.mail_password)
                 server.send_message(msg)
