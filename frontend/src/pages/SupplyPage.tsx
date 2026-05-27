@@ -10,7 +10,7 @@ import { serialsApi } from "../api/serials.api";
 import { Panel } from "../components/Panel";
 import { PageTitle } from "../components/PageTitle";
 import { useAuth } from "../hooks/useAuth";
-import type { SerialStatus, SupplyFilters, SupplyPayload, SupplyRecord, User } from "../types";
+import type { EstadoEntrega, SerialStatus, SupplyFilters, SupplyPayload, SupplyRecord, User } from "../types";
 import { canManageSupplies, hasGlobalCavAccess } from "../utils/access";
 import { formatSerialStatus, serialStatusOptions } from "../utils/status";
 
@@ -23,11 +23,20 @@ const modalInputClassName =
 type SupplyFormState = {
   serial: string;
   descripcion_producto: string;
+  material: string;
   numero_guia: string;
   centro_costos_cav: string;
   cav_id: string;
   fecha_envio: string;
+  fecha_entrega_pdv: string;
+  estado_entrega: EstadoEntrega;
 };
+
+const estadoEntregaOptions: EstadoEntrega[] = ["Pendiente de Entrega", "Entregado por Transportadora"];
+
+const estadoEntregaByNormalized = new Map<string, EstadoEntrega>(
+  estadoEntregaOptions.map((option) => [option.trim().toLowerCase(), option]),
+);
 
 type SupplyFilterState = {
   cav_id: string;
@@ -57,6 +66,49 @@ interface SupplyModalFieldProps extends PropsWithChildren {
 }
 
 const importTemplateHeaders = ["serial", "descripcion_producto", "numero_guia", "fecha_envio", "nombre_cav"];
+
+const exportSupplyHeaders = [
+  "serial",
+  "descripcion_producto",
+  "material",
+  "numero_guia",
+  "fecha_envio",
+  "fecha_entrega_pdv",
+  "estado_entrega",
+  "nombre_cav",
+];
+
+const templateImportHeaders = [
+  "serial",
+  "descripcion_producto",
+  "numero_guia",
+  "fecha_envio",
+  "fecha_entrega_pdv",
+  "estado_entrega",
+  "nombre_cav",
+];
+
+const productoOptions = ["Mate", "Privacy", "Blue light", "Estandar"] as const;
+
+const productoMaterialMap: Record<(typeof productoOptions)[number], string> = {
+  Mate: "7018735",
+  Privacy: "7018734",
+  "Blue light": "7015640",
+  Estandar: "7015490",
+};
+
+function normalizeProductoOption(value: string) {
+  return value.trim().toLowerCase();
+}
+
+const productoOptionsByNormalized = new Map(
+  productoOptions.map((option) => [normalizeProductoOption(option), option]),
+);
+
+function getMaterialForProducto(producto: string): string {
+  const matched = productoOptionsByNormalized.get(normalizeProductoOption(producto));
+  return matched ? productoMaterialMap[matched] : "";
+}
 
 function getErrorMessage(error: unknown, fallback: string) {
   return (
@@ -161,10 +213,13 @@ function getInitialForm(user?: User | null): SupplyFormState {
   return {
     serial: "",
     descripcion_producto: "",
+    material: "",
     numero_guia: "",
     centro_costos_cav: "",
     cav_id: hasGlobalCavAccess(user?.role.name) ? "" : String(user?.cav_id ?? ""),
     fecha_envio: getTodayInputValue(),
+    fecha_entrega_pdv: "",
+    estado_entrega: "Pendiente de Entrega",
   };
 }
 
@@ -183,10 +238,13 @@ function toPayload(form: SupplyFormState): SupplyPayload {
   return {
     serial: form.serial,
     descripcion_producto: form.descripcion_producto,
+    material: form.material || getMaterialForProducto(form.descripcion_producto) || null,
     numero_guia: form.numero_guia,
     cav_id: Number(form.cav_id),
     centro_costos_cav: form.centro_costos_cav,
     fecha_envio: toSupplyIso(form.fecha_envio),
+    fecha_entrega_pdv: form.fecha_entrega_pdv ? toSupplyIso(form.fecha_entrega_pdv) : null,
+    estado_entrega: form.estado_entrega,
   };
 }
 
@@ -205,10 +263,13 @@ function toEditForm(record: SupplyRecord): SupplyFormState {
   return {
     serial: record.serial,
     descripcion_producto: record.descripcion_producto,
+    material: record.material ?? getMaterialForProducto(record.descripcion_producto),
     numero_guia: record.numero_guia ?? "",
     centro_costos_cav: record.centro_costos_cav,
     cav_id: String(record.cav_id),
     fecha_envio: fromSupplyIso(record.fecha_envio),
+    fecha_entrega_pdv: record.fecha_entrega_pdv ? fromSupplyIso(record.fecha_entrega_pdv) : "",
+    estado_entrega: record.estado_entrega ?? "Pendiente de Entrega",
   };
 }
 
@@ -299,17 +360,30 @@ function SupplyForm({
           </SupplyModalField>
         </div>
 
-        <div className="md:col-span-2">
-          <SupplyModalField label="Descripcion del producto">
-            <input
-              className={modalInputClassName}
-              placeholder="Describe el producto"
-              value={form.descripcion_producto}
-              onChange={(event) => onFieldChange("descripcion_producto", event.target.value)}
-              required
-            />
-          </SupplyModalField>
-        </div>
+        <SupplyModalField label="Descripcion del producto">
+          <select
+            className={modalInputClassName}
+            value={form.descripcion_producto}
+            onChange={(event) => onFieldChange("descripcion_producto", event.target.value)}
+            required
+          >
+            <option value="">Selecciona producto</option>
+            {productoOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </SupplyModalField>
+
+        <SupplyModalField label="Material">
+          <input
+            className={`${modalInputClassName} bg-slate-50`}
+            placeholder="Se completa segun el producto"
+            value={form.material}
+            readOnly
+          />
+        </SupplyModalField>
 
         <div className="md:col-span-2">
           <SupplyModalField label="Numero de guia">
@@ -361,6 +435,30 @@ function SupplyForm({
             />
           </SupplyModalField>
         </div>
+
+        <SupplyModalField label="Fecha de entrega en PDV">
+          <input
+            className={modalInputClassName}
+            type="date"
+            value={form.fecha_entrega_pdv}
+            onChange={(event) => onFieldChange("fecha_entrega_pdv", event.target.value)}
+          />
+        </SupplyModalField>
+
+        <SupplyModalField label="Estado de entrega">
+          <select
+            className={modalInputClassName}
+            value={form.estado_entrega}
+            onChange={(event) => onFieldChange("estado_entrega", event.target.value)}
+            required
+          >
+            {estadoEntregaOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </SupplyModalField>
       </div>
 
       {errorMessage ? <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p> : null}
@@ -404,6 +502,10 @@ export function SupplyPage() {
   const [importSummary, setImportSummary] = useState<BulkImportSummary | null>(null);
   const [importErrorMessage, setImportErrorMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  const pageSizeOptions = [10, 25, 50, 100];
 
   const cavOptions = cavsQuery.data ?? [];
   const hasGlobalAccess = hasGlobalCavAccess(user?.role.name);
@@ -527,8 +629,20 @@ export function SupplyPage() {
     : null;
 
   const supplies = suppliesQuery.data ?? [];
-  const allVisibleSelected = supplies.length > 0 && supplies.every((item) => selectedSupplyIds.includes(item.id));
+  const totalSupplies = supplies.length;
+  const totalPages = Math.max(1, Math.ceil(totalSupplies / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const paginatedSupplies = supplies.slice(startIndex, startIndex + pageSize);
+  const rangeStart = totalSupplies === 0 ? 0 : startIndex + 1;
+  const rangeEnd = Math.min(startIndex + pageSize, totalSupplies);
+  const allVisibleSelected =
+    paginatedSupplies.length > 0 && paginatedSupplies.every((item) => selectedSupplyIds.includes(item.id));
   const hasSelectedRows = selectedSupplyIds.length > 0;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, pageSize, totalSupplies]);
 
   function toggleSupplySelection(supplyId: number) {
     setSelectedSupplyIds((current) =>
@@ -539,11 +653,11 @@ export function SupplyPage() {
   function toggleAllVisibleRows() {
     setSelectedSupplyIds((current) => {
       if (allVisibleSelected) {
-        return current.filter((id) => !supplies.some((item) => item.id === id));
+        return current.filter((id) => !paginatedSupplies.some((item) => item.id === id));
       }
 
       const next = new Set(current);
-      supplies.forEach((item) => next.add(item.id));
+      paginatedSupplies.forEach((item) => next.add(item.id));
       return Array.from(next);
     });
   }
@@ -585,7 +699,18 @@ export function SupplyPage() {
     triggerExcelDownload("plantilla-abastecimientos.xlsx", [
       {
         name: "Abastecimientos",
-        rows: [importTemplateHeaders],
+        rows: [templateImportHeaders],
+      },
+      {
+        name: "Productos",
+        rows: [
+          ["descripcion_producto", "material_asignado"],
+          ...productoOptions.map((option) => [option, productoMaterialMap[option]]),
+        ],
+      },
+      {
+        name: "Estados de entrega",
+        rows: [["estado_entrega"], ...estadoEntregaOptions.map((option) => [option])],
       },
       {
         name: "CAVs",
@@ -602,12 +727,15 @@ export function SupplyPage() {
       {
         name: "Abastecimientos",
         rows: [
-          importTemplateHeaders,
+          exportSupplyHeaders,
           ...supplies.map((item) => [
             item.serial,
             item.descripcion_producto,
+            item.material ?? getMaterialForProducto(item.descripcion_producto) ?? "",
             item.numero_guia ?? "",
             fromSupplyIso(item.fecha_envio),
+            item.fecha_entrega_pdv ? fromSupplyIso(item.fecha_entrega_pdv) : "",
+            item.estado_entrega ?? "Pendiente de Entrega",
             item.cav?.nombre_cav ?? "",
           ]),
         ],
@@ -655,6 +783,8 @@ export function SupplyPage() {
       const guideNumberIndex = headers.indexOf("numero_guia");
       const dateIndex = headers.indexOf("fecha_envio");
       const serialIndex = headers.indexOf("serial");
+      const fechaEntregaIndex = headers.indexOf("fecha_entrega_pdv");
+      const estadoEntregaIndex = headers.indexOf("estado_entrega");
       const errorLines: string[] = [];
       let successCount = 0;
       const cavByName = new Map(cavOptions.map((cav) => [normalizeCavName(cav.nombre_cav), cav]));
@@ -666,6 +796,8 @@ export function SupplyPage() {
         const numeroGuia = String(row[guideNumberIndex] ?? "").trim();
         const fechaEnvio = String(row[dateIndex] ?? "").trim();
         const cavName = String(row[cavNameIndex] ?? "").trim();
+        const fechaEntregaRaw = fechaEntregaIndex >= 0 ? String(row[fechaEntregaIndex] ?? "").trim() : "";
+        const estadoEntregaRaw = estadoEntregaIndex >= 0 ? String(row[estadoEntregaIndex] ?? "").trim() : "";
 
         if (![serial, descripcionProducto, numeroGuia, fechaEnvio, cavName].some(Boolean)) {
           continue;
@@ -676,18 +808,39 @@ export function SupplyPage() {
             throw new Error("Debes completar serial, descripcion_producto, numero_guia, fecha_envio y nombre_cav.");
           }
 
+          const normalizedProducto = productoOptionsByNormalized.get(normalizeProductoOption(descripcionProducto));
+          if (!normalizedProducto) {
+            throw new Error(
+              `El producto "${descripcionProducto}" no es valido. Opciones permitidas: ${productoOptions.join(", ")}.`,
+            );
+          }
+
           const selectedCav = cavByName.get(normalizeCavName(cavName));
           if (!selectedCav) {
             throw new Error(`El nombre del CAV "${cavName}" no existe en la tabla de CAVs.`);
           }
 
+          let estadoEntregaValue: EstadoEntrega = "Pendiente de Entrega";
+          if (estadoEntregaRaw) {
+            const matchedEstado = estadoEntregaByNormalized.get(estadoEntregaRaw.trim().toLowerCase());
+            if (!matchedEstado) {
+              throw new Error(
+                `El estado de entrega "${estadoEntregaRaw}" no es valido. Opciones permitidas: ${estadoEntregaOptions.join(", ")}.`,
+              );
+            }
+            estadoEntregaValue = matchedEstado;
+          }
+
           await serialsApi.createSupply({
             serial,
-            descripcion_producto: descripcionProducto,
+            descripcion_producto: normalizedProducto,
+            material: getMaterialForProducto(normalizedProducto) || null,
             numero_guia: numeroGuia,
             cav_id: selectedCav.id,
             centro_costos_cav: selectedCav.centro_costos,
             fecha_envio: normalizeImportDate(fechaEnvio),
+            fecha_entrega_pdv: fechaEntregaRaw ? normalizeImportDate(fechaEntregaRaw) : null,
+            estado_entrega: estadoEntregaValue,
           });
           successCount += 1;
         } catch (error) {
@@ -805,7 +958,7 @@ export function SupplyPage() {
                 Cada fila muestra serial, producto, guia, fecha, CAV y centro de costo.
               </p>
               <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-                {selectedSupplyIds.length} seleccionados de {supplies.length} visibles
+                {selectedSupplyIds.length} seleccionados de {totalSupplies} en total
               </p>
             </div>
             {supplyManagementEnabled ? (
@@ -927,8 +1080,11 @@ export function SupplyPage() {
                     ) : null}
                     <th className="px-4 py-3 font-semibold">Serial</th>
                     <th className="px-4 py-3 font-semibold">Producto</th>
+                    <th className="px-4 py-3 font-semibold">Material</th>
                     <th className="px-4 py-3 font-semibold">Numero de guia</th>
                     <th className="px-4 py-3 font-semibold">Fecha</th>
+                    <th className="px-4 py-3 font-semibold">Fecha entrega PDV</th>
+                    <th className="px-4 py-3 font-semibold">Estado de entrega</th>
                     <th className="px-4 py-3 font-semibold">CAV</th>
                     <th className="px-4 py-3 font-semibold">Centro de costo</th>
                     <th className="px-4 py-3 font-semibold">Estado</th>
@@ -938,12 +1094,12 @@ export function SupplyPage() {
                 <tbody className="divide-y divide-slate-100">
                   {suppliesQuery.isLoading ? (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 9 : 7}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 12 : 10}>
                         Cargando abastecimientos...
                       </td>
                     </tr>
-                  ) : suppliesQuery.data && suppliesQuery.data.length > 0 ? (
-                    suppliesQuery.data.map((item) => (
+                  ) : paginatedSupplies.length > 0 ? (
+                    paginatedSupplies.map((item) => (
                       <tr key={item.id} className="transition hover:bg-slate-50/70">
                         {supplyManagementEnabled ? (
                           <td className="px-4 py-4">
@@ -958,8 +1114,13 @@ export function SupplyPage() {
                         ) : null}
                         <td className="px-4 py-4 font-medium text-slate-900">{item.serial}</td>
                         <td className="px-4 py-4">{item.descripcion_producto}</td>
+                        <td className="px-4 py-4">{item.material ?? getMaterialForProducto(item.descripcion_producto) ?? "-"}</td>
                         <td className="px-4 py-4">{item.numero_guia ?? "Sin guia"}</td>
                         <td className="px-4 py-4">{formatSupplyDate(item.fecha_envio)}</td>
+                        <td className="px-4 py-4">
+                          {item.fecha_entrega_pdv ? formatSupplyDate(item.fecha_entrega_pdv) : "Sin fecha"}
+                        </td>
+                        <td className="px-4 py-4">{item.estado_entrega ?? "Pendiente de Entrega"}</td>
                         <td className="px-4 py-4">{item.cav?.nombre_cav ?? "Sin CAV"}</td>
                         <td className="px-4 py-4">{item.centro_costos_cav}</td>
                         <td className="px-4 py-4">
@@ -994,13 +1155,58 @@ export function SupplyPage() {
                     ))
                   ) : (
                     <tr>
-                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 9 : 7}>
+                      <td className="px-4 py-8 text-center text-slate-500" colSpan={supplyManagementEnabled ? 12 : 10}>
                         No hay abastecimientos que coincidan con los filtros actuales.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <span>Mostrar</span>
+              <select
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100/70"
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value))}
+              >
+                {pageSizeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <span>registros por pagina</span>
+            </div>
+
+            <div className="flex items-center gap-3 text-sm text-slate-600">
+              <span>
+                {rangeStart}-{rangeEnd} de {totalSupplies}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                  disabled={safePage <= 1}
+                >
+                  Anterior
+                </button>
+                <span className="px-3 py-2 font-medium text-slate-700">
+                  Pagina {safePage} de {totalPages}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                  disabled={safePage >= totalPages}
+                >
+                  Siguiente
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1021,7 +1227,13 @@ export function SupplyPage() {
           isPending={createSupplyMutation.isPending}
           onCavChange={(value) => setCreateForm((current) => syncCentroCostos(current, value))}
           onClose={closeCreateModal}
-          onFieldChange={(field, value) => setCreateForm((current) => ({ ...current, [field]: value }))}
+          onFieldChange={(field, value) =>
+            setCreateForm((current) => ({
+              ...current,
+              [field]: value,
+              ...(field === "descripcion_producto" ? { material: getMaterialForProducto(value) } : {}),
+            }))
+          }
           onSubmit={handleCreateSubmit}
         />
       </SupplyModal>
@@ -1041,7 +1253,13 @@ export function SupplyPage() {
           isPending={updateSupplyMutation.isPending}
           onCavChange={(value) => setEditForm((current) => syncCentroCostos(current, value))}
           onClose={closeEditModal}
-          onFieldChange={(field, value) => setEditForm((current) => ({ ...current, [field]: value }))}
+          onFieldChange={(field, value) =>
+            setEditForm((current) => ({
+              ...current,
+              [field]: value,
+              ...(field === "descripcion_producto" ? { material: getMaterialForProducto(value) } : {}),
+            }))
+          }
           onSubmit={handleEditSubmit}
         />
       </SupplyModal>

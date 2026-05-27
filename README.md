@@ -20,5 +20,6 @@ Aplicacion web para control de seriales, inventario y trazabilidad completa por 
 
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Despliegue](docs/DEPLOYMENT.md)
+- [Implementacion CAVs](docs/IMPLEMENTACION_CAVS.md)
 - [SQL de esquema](sql/schema.sql)
 - [SQL de semillas](sql/seed.sql)

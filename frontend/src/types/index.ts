@@ -35,6 +35,7 @@ export interface Cav {
   id: number;
   nombre_cav: string;
   centro_costos: string;
+  regional?: string | null;
 }
 
 export interface User {
@@ -122,13 +123,18 @@ export interface DashboardResponse {
   series: DashboardPoint[];
 }
 
+export type EstadoEntrega = "Pendiente de Entrega" | "Entregado por Transportadora";
+
 export interface SupplyPayload {
   serial: string;
   descripcion_producto: string;
+  material?: string | null;
   numero_guia: string;
   cav_id: number;
   centro_costos_cav: string;
   fecha_envio: string;
+  fecha_entrega_pdv?: string | null;
+  estado_entrega?: EstadoEntrega | null;
 }
 
 export interface SupplyRecord {
@@ -136,10 +142,13 @@ export interface SupplyRecord {
   serial_id: number;
   serial: string;
   descripcion_producto: string;
+  material?: string | null;
   numero_guia?: string | null;
   cav_id: number;
   centro_costos_cav: string;
   fecha_envio: string;
+  fecha_entrega_pdv?: string | null;
+  estado_entrega: EstadoEntrega;
   current_status: SerialStatus;
   cav?: Cav | null;
 }

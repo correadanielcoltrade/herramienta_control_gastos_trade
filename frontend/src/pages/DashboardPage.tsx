@@ -228,6 +228,12 @@ export function DashboardPage() {
   const [availablePageSize, setAvailablePageSize] = useState<number>(10);
   const [legalizedPage, setLegalizedPage] = useState(1);
   const [legalizedPageSize, setLegalizedPageSize] = useState<number>(10);
+  const [pendientePage, setPendientePage] = useState(1);
+  const [pendientePageSize, setPendientePageSize] = useState<number>(10);
+  const canSeePendienteSerials =
+    user?.role.name === "SuperAdmin" ||
+    user?.role.name === "Trade Leader" ||
+    user?.role.name === "Trade";
   const liveRefreshOptions = {
     enabled: Boolean(user),
     refetchOnMount: "always" as const,
@@ -294,6 +300,17 @@ export function DashboardPage() {
     queryFn: () => serialsApi.listLegalizations(filters),
     ...liveRefreshOptions,
   });
+  const pendienteSerialsQuery = useQuery({
+    queryKey: ["dashboard", "pendiente-serials", filters.cav_id, filters.user_id],
+    queryFn: () =>
+      serialsApi.list({
+        cav_id: filters.cav_id,
+        user_id: filters.user_id,
+        status: "pendiente",
+      }),
+    ...liveRefreshOptions,
+    enabled: Boolean(user) && canSeePendienteSerials,
+  });
 
   const summary = dashboardQuery.data?.summary;
   const pendingSupplies = pendingSuppliesQuery.data ?? [];
@@ -302,14 +319,19 @@ export function DashboardPage() {
     matchesDateRange(item.last_movement_at, filters.start_date, filters.end_date),
   );
   const legalizedSerials = legalizedSerialsQuery.data ?? [];
+  const pendienteSerials = (pendienteSerialsQuery.data ?? []).filter((item) =>
+    matchesDateRange(item.last_movement_at, filters.start_date, filters.end_date),
+  );
   const pendingPagination = paginateRows(pendingSupplies, pendingPage, pendingPageSize);
   const availablePagination = paginateRows(availableSerials, availablePage, availablePageSize);
   const legalizedPagination = paginateRows(legalizedSerials, legalizedPage, legalizedPageSize);
+  const pendientePagination = paginateRows(pendienteSerials, pendientePage, pendientePageSize);
 
   useEffect(() => {
     setPendingPage(1);
     setAvailablePage(1);
     setLegalizedPage(1);
+    setPendientePage(1);
   }, [filters]);
 
   function handleExportPendingSupplies() {
@@ -376,6 +398,29 @@ export function DashboardPage() {
             item.asesor_responsable,
             item.registrado_por,
             item.cav?.nombre_cav ?? "",
+          ]),
+        ],
+      },
+    ]);
+  }
+
+  function handleExportPendienteSerials() {
+    if (pendienteSerials.length === 0) {
+      return;
+    }
+
+    triggerExcelDownload("seriales-pendientes.xlsx", [
+      {
+        name: "Pendientes",
+        rows: [
+          ["serial", "descripcion_producto", "ultimo_movimiento", "dias_pendiente", "cav", "estado"],
+          ...pendienteSerials.map((item) => [
+            item.serial,
+            item.descripcion_producto ?? "",
+            formatDashboardDate(item.last_movement_at),
+            getPendingDays(item.last_movement_at),
+            item.cav?.nombre_cav ?? "",
+            formatSerialStatus(item.current_status),
           ]),
         ],
       },
@@ -805,6 +850,91 @@ export function DashboardPage() {
           </div>
         </div>
       </Panel>
+
+      {canSeePendienteSerials ? (
+        <Panel
+          title="Seriales pendientes"
+          subtitle="Seriales recibidos sin abastecimiento previo (estado pendiente de conciliacion). Visible solo para SuperAdmin, Trade Leader y Trade."
+        >
+          <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-semibold text-slate-900">Pendientes de conciliacion</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {pendienteSerials.length} serial{pendienteSerials.length === 1 ? "" : "es"} en estado pendiente
+                  con los filtros actuales.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportPendienteSerials}
+                disabled={pendienteSerialsQuery.isLoading || pendienteSerials.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-300 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 hover:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Download size={16} />
+                Exportar pendientes
+              </button>
+            </div>
+
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-600">
+                  <thead className="bg-slate-50/80 text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Serial</th>
+                      <th className="px-4 py-3 font-semibold">Producto</th>
+                      <th className="px-4 py-3 font-semibold">Ultimo movimiento</th>
+                      <th className="px-4 py-3 font-semibold">Dias pendiente</th>
+                      <th className="px-4 py-3 font-semibold">CAV</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pendienteSerialsQuery.isLoading ? (
+                      <tr>
+                        <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                          Cargando seriales pendientes...
+                        </td>
+                      </tr>
+                    ) : pendientePagination.pageRows.length > 0 ? (
+                      pendientePagination.pageRows.map((item) => (
+                        <tr key={item.id} className="transition hover:bg-slate-50/70">
+                          <td className="px-4 py-4 font-medium text-slate-900">{item.serial}</td>
+                          <td className="px-4 py-4">{item.descripcion_producto ?? "Sin descripcion"}</td>
+                          <td className="px-4 py-4">{formatDashboardDate(item.last_movement_at)}</td>
+                          <td className="px-4 py-4">
+                            <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-rose-700">
+                              {getPendingDays(item.last_movement_at)} dias
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">{item.cav?.nombre_cav ?? "Sin CAV"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                          No hay seriales pendientes con los filtros actuales.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationFooter
+                itemLabel="seriales"
+                onPageChange={setPendientePage}
+                onPageSizeChange={(size) => {
+                  setPendientePageSize(size);
+                  setPendientePage(1);
+                }}
+                page={pendientePagination.safePage}
+                pageSize={pendientePageSize}
+                totalItems={pendienteSerials.length}
+                totalPages={pendientePagination.totalPages}
+              />
+            </div>
+          </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }

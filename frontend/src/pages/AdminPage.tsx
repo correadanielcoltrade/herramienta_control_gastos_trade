@@ -12,6 +12,7 @@ import type { Cav, Role, RoleName, User } from "../types";
 import { canManageRole } from "../utils/access";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const REGIONAL_OPTIONS = ["Zona Norte", "Zona Sur", "Plaza Claro", "Fuera de Coltrade"] as const;
 const TRADE_CREATABLE_ROLES: RoleName[] = ["Asesor", "Trade"];
 const TRADE_CREATABLE_ROLE_KEYS = new Set(TRADE_CREATABLE_ROLES.map((role) => normalizeRoleLabel(role)));
 
@@ -279,7 +280,9 @@ function filterCavs(cavs: Cav[], search: string) {
   }
 
   return cavs.filter((cav) =>
-    [cav.nombre_cav, cav.centro_costos].some((value) => value.toLowerCase().includes(normalizedSearch)),
+    [cav.nombre_cav, cav.centro_costos, cav.regional ?? ""].some((value) =>
+      value.toLowerCase().includes(normalizedSearch),
+    ),
   );
 }
 
@@ -329,8 +332,8 @@ export function AdminPage() {
   const [userPageSize, setUserPageSize] = useState<number>(10);
   const [cavPage, setCavPage] = useState(1);
   const [userPage, setUserPage] = useState(1);
-  const [cavForm, setCavForm] = useState({ nombre_cav: "", centro_costos: "" });
-  const [cavEditForm, setCavEditForm] = useState({ nombre_cav: "", centro_costos: "" });
+  const [cavForm, setCavForm] = useState({ nombre_cav: "", centro_costos: "", regional: "" });
+  const [cavEditForm, setCavEditForm] = useState({ nombre_cav: "", centro_costos: "", regional: "" });
   const [userForm, setUserForm] = useState({
     nombre_usuario: "",
     correo: "",
@@ -351,14 +354,20 @@ export function AdminPage() {
   const cavMutation = useMutation({
     mutationFn: cavsApi.create,
     onSuccess: () => {
-      setCavForm({ nombre_cav: "", centro_costos: "" });
+      setCavForm({ nombre_cav: "", centro_costos: "", regional: "" });
       setIsCreatingCav(false);
       queryClient.invalidateQueries({ queryKey: ["cavs"] });
     },
   });
 
   const updateCavMutation = useMutation({
-    mutationFn: ({ cavId, payload }: { cavId: number; payload: { nombre_cav: string; centro_costos: string } }) =>
+    mutationFn: ({
+      cavId,
+      payload,
+    }: {
+      cavId: number;
+      payload: { nombre_cav: string; centro_costos: string; regional: string | null };
+    }) =>
       cavsApi.update(cavId, payload),
     onSuccess: () => {
       closeCavEditModal();
@@ -424,7 +433,7 @@ export function AdminPage() {
 
   function closeCavEditModal() {
     setEditingCavId(null);
-    setCavEditForm({ nombre_cav: "", centro_costos: "" });
+    setCavEditForm({ nombre_cav: "", centro_costos: "", regional: "" });
   }
 
   function closeUserEditModal() {
@@ -441,12 +450,12 @@ export function AdminPage() {
 
   function openCavCreateModal() {
     setIsCreatingCav(true);
-    setCavForm({ nombre_cav: "", centro_costos: "" });
+    setCavForm({ nombre_cav: "", centro_costos: "", regional: "" });
   }
 
   function closeCavCreateModal() {
     setIsCreatingCav(false);
-    setCavForm({ nombre_cav: "", centro_costos: "" });
+    setCavForm({ nombre_cav: "", centro_costos: "", regional: "" });
   }
 
   function openUserCreateModal() {
@@ -478,6 +487,7 @@ export function AdminPage() {
     setCavEditForm({
       nombre_cav: cav.nombre_cav,
       centro_costos: cav.centro_costos,
+      regional: cav.regional ?? "",
     });
   }
 
@@ -497,7 +507,11 @@ export function AdminPage() {
     event.preventDefault();
 
     try {
-      await cavMutation.mutateAsync(cavForm);
+      await cavMutation.mutateAsync({
+        nombre_cav: cavForm.nombre_cav,
+        centro_costos: cavForm.centro_costos,
+        regional: cavForm.regional.trim() ? cavForm.regional.trim() : null,
+      });
     } catch {
       // El error se muestra en el modulo.
     }
@@ -513,7 +527,11 @@ export function AdminPage() {
     try {
       await updateCavMutation.mutateAsync({
         cavId: editingCavId,
-        payload: cavEditForm,
+        payload: {
+          nombre_cav: cavEditForm.nombre_cav,
+          centro_costos: cavEditForm.centro_costos,
+          regional: cavEditForm.regional.trim() ? cavEditForm.regional.trim() : null,
+        },
       });
     } catch {
       // El error se muestra en el modal.
@@ -611,13 +629,14 @@ export function AdminPage() {
                     <tr className="text-left text-xs uppercase tracking-[0.18em] text-slate-500">
                       <th className="px-4 py-3 font-semibold">Nombre CAV</th>
                       <th className="px-4 py-3 font-semibold">Centro de costos</th>
+                      <th className="px-4 py-3 font-semibold">Regional</th>
                       <th className="px-4 py-3 font-semibold text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
                     {cavsQuery.isLoading ? (
                       <tr>
-                        <td className="px-4 py-8 text-center text-slate-500" colSpan={3}>
+                        <td className="px-4 py-8 text-center text-slate-500" colSpan={4}>
                           Cargando CAVs...
                         </td>
                       </tr>
@@ -626,6 +645,7 @@ export function AdminPage() {
                         <tr key={cav.id} className="transition hover:bg-slate-50/70">
                           <td className="px-4 py-4 font-medium text-slate-900">{cav.nombre_cav}</td>
                           <td className="px-4 py-4">{cav.centro_costos}</td>
+                          <td className="px-4 py-4">{cav.regional ?? "Sin asignar"}</td>
                           <td className="px-4 py-4">
                             <div className="flex justify-end gap-2">
                               <button
@@ -648,7 +668,7 @@ export function AdminPage() {
                       ))
                     ) : (
                       <tr>
-                        <td className="px-4 py-8 text-center text-slate-500" colSpan={3}>
+                        <td className="px-4 py-8 text-center text-slate-500" colSpan={4}>
                           No hay CAVs que coincidan con la busqueda.
                         </td>
                       </tr>
@@ -839,6 +859,20 @@ export function AdminPage() {
               required
             />
           </ModalField>
+          <ModalField label="Regional">
+            <select
+              className={modalInputClassName}
+              value={cavEditForm.regional}
+              onChange={(event) => setCavEditForm((current) => ({ ...current, regional: event.target.value }))}
+            >
+              <option value="">Sin asignar</option>
+              {REGIONAL_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </ModalField>
           {updateCavMutation.error ? (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{cavUpdateErrorMessage}</p>
           ) : null}
@@ -987,6 +1021,20 @@ export function AdminPage() {
               onChange={(event) => setCavForm((current) => ({ ...current, centro_costos: event.target.value }))}
               required
             />
+          </ModalField>
+          <ModalField label="Regional">
+            <select
+              className={modalInputClassName}
+              value={cavForm.regional}
+              onChange={(event) => setCavForm((current) => ({ ...current, regional: event.target.value }))}
+            >
+              <option value="">Sin asignar</option>
+              {REGIONAL_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </ModalField>
           {cavMutation.error ? (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{cavErrorMessage}</p>
