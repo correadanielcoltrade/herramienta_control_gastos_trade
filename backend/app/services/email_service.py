@@ -24,15 +24,10 @@ def _build_reset_html(user_name: str, reset_link: str) -> str:
             <p>Para establecer una nueva contraseña, haz clic en el botón de abajo. <strong>Este enlace es válido por 30 minutos.</strong></p>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="{reset_link}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+              <a href="{reset_link}" target="_blank" rel="noopener noreferrer" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                 Recuperar Contraseña
               </a>
             </div>
-
-            <p style="font-size: 12px; color: #666;">
-              O copia y pega este enlace en tu navegador:<br>
-              <code style="background: #f0f0f0; padding: 5px; border-radius: 3px; word-break: break-all;">{reset_link}</code>
-            </p>
 
             <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
 
