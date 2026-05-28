@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     mail_port: int = 587
     password_reset_expire_minutes: int = 30
     mail_timeout_seconds: int = 10
+    email_provider: str = "smtp"
+    mail_from_name: str = "MKP Serial Control"
+    brevo_api_key: str = ""
 
     @computed_field  # type: ignore[prop-decorator]
     @property
