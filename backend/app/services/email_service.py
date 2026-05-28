@@ -99,12 +99,69 @@ def _send_via_brevo(recipient_email: str, subject: str, html: str) -> bool:
         return False
 
 
+def _build_welcome_html(user_name: str, correo: str, password: str, login_link: str) -> str:
+    return f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0;">MKP Serial Control</h1>
+          </div>
+
+          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #ddd;">
+            <p>Hola <strong>{user_name}</strong>,</p>
+
+            <p>Se ha creado tu usuario en la <strong>Herramienta de Control de Gastos Trade</strong>. Estos son tus datos de acceso:</p>
+
+            <table style="width: 100%; background: #ffffff; border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 20px 0;">
+              <tr>
+                <td style="padding: 6px 0;"><strong>Usuario / correo:</strong></td>
+                <td style="padding: 6px 0;">{correo}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0;"><strong>Contraseña temporal:</strong></td>
+                <td style="padding: 6px 0;"><code style="background: #f0f0f0; padding: 4px 8px; border-radius: 3px;">{password}</code></td>
+              </tr>
+            </table>
+
+            <p>Por seguridad, te recomendamos cambiar la contraseña la primera vez que ingreses.</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="{login_link}" target="_blank" rel="noopener noreferrer" style="background-color: #667eea; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; border: 1px solid #667eea;">
+                <span style="color: #ffffff;">Ingresar a la herramienta</span>
+              </a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+
+            <p style="font-size: 12px; color: #999;">
+              Si tienes problemas para ingresar, contacta al soporte técnico.<br>
+              <strong>Por seguridad, nunca compartas tu contraseña por correo.</strong>
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+
 class EmailService:
     @staticmethod
     def send_password_reset_email(recipient_email: str, reset_link: str, user_name: str) -> bool:
         subject = "Recuperación de Contraseña - MKP Serial Control"
         html = _build_reset_html(user_name, reset_link)
+        return EmailService._dispatch(recipient_email, subject, html)
 
+    @staticmethod
+    def send_welcome_email(
+        recipient_email: str, user_name: str, password: str, login_link: str
+    ) -> bool:
+        subject = "Bienvenido a la Herramienta de Control de Gastos Trade"
+        html = _build_welcome_html(user_name, recipient_email, password, login_link)
+        return EmailService._dispatch(recipient_email, subject, html)
+
+    @staticmethod
+    def _dispatch(recipient_email: str, subject: str, html: str) -> bool:
         provider = (settings.email_provider or "smtp").lower()
         if provider == "brevo":
             return _send_via_brevo(recipient_email, subject, html)

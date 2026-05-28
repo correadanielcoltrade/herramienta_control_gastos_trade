@@ -4,6 +4,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.deps import get_current_user, normalize_role_name, require_roles
 from app.api.utils import dump_schema, dump_schema_list, json_response, parse_body
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.enums import RoleName
@@ -12,6 +13,7 @@ from app.models.role import Role
 from app.models.user import User
 from app.schemas.user import RoleRead, UserCreate, UserRead, UserUpdate
 from app.services.audit_service import register_audit_log
+from app.services.email_service import EmailService
 
 
 users_bp = Blueprint("users", __name__)
@@ -120,6 +122,18 @@ def create_user():
     user = db.scalar(
         select(User).options(joinedload(User.role), joinedload(User.cav)).where(User.id == user.id)
     )
+
+    login_link = f"{settings.frontend_url.rstrip('/')}/login"
+    try:
+        EmailService.send_welcome_email(
+            recipient_email=user.correo,
+            user_name=user.nombre_usuario,
+            password=payload.password,
+            login_link=login_link,
+        )
+    except Exception as exc:
+        print(f"Error enviando correo de bienvenida a {user.correo}: {exc}")
+
     return json_response(dump_schema(UserRead.model_validate(user)), 201)
 
 
