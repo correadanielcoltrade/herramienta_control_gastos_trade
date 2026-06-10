@@ -9,6 +9,7 @@ import { cavsApi } from "../api/cavs.api";
 import { serialsApi } from "../api/serials.api";
 import { Panel } from "../components/Panel";
 import { PageTitle } from "../components/PageTitle";
+import { SearchableSelect, type SearchableSelectOption } from "../components/SearchableSelect";
 import { useAuth } from "../hooks/useAuth";
 import type { EstadoEntrega, SerialStatus, SupplyFilters, SupplyPayload, SupplyRecord, User } from "../types";
 import { canManageSupplies, hasGlobalCavAccess } from "../utils/access";
@@ -511,6 +512,14 @@ export function SupplyPage() {
   const hasGlobalAccess = hasGlobalCavAccess(user?.role.name);
   const supplyManagementEnabled = canManageSupplies(user?.role.name);
   const cavLocked = !hasGlobalAccess;
+  const cavFilterOptions: SearchableSelectOption[] = [
+    { value: "", label: "Todos los CAV" },
+    ...cavOptions.map((cav) => ({ value: String(cav.id), label: cav.nombre_cav })),
+  ];
+  const statusFilterOptions: SearchableSelectOption[] = [
+    { value: "", label: "Todos los estados" },
+    ...serialStatusOptions.map((status) => ({ value: status.value, label: status.label })),
+  ];
 
   useEffect(() => {
     if (!user) {
@@ -900,19 +909,16 @@ export function SupplyPage() {
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">CAV</span>
-              <select
-                className={inputClassName}
+              <SearchableSelect
+                options={cavFilterOptions}
                 value={filters.cav_id}
-                onChange={(event) => setFilters((current) => ({ ...current, cav_id: event.target.value }))}
+                onChange={(value) => setFilters((current) => ({ ...current, cav_id: value }))}
                 disabled={cavLocked}
-              >
-                <option value="">Todos los CAV</option>
-                {cavOptions.map((cav) => (
-                  <option key={cav.id} value={cav.id}>
-                    {cav.nombre_cav}
-                  </option>
-                ))}
-              </select>
+                className={inputClassName}
+                placeholder="Todos los CAV"
+                searchPlaceholder="Buscar CAV..."
+                ariaLabel="Filtrar por CAV"
+              />
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Producto</span>
@@ -934,20 +940,17 @@ export function SupplyPage() {
             </label>
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Estado</span>
-              <select
-                className={inputClassName}
+              <SearchableSelect
+                options={statusFilterOptions}
                 value={filters.status}
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, status: event.target.value as "" | SerialStatus }))
+                onChange={(value) =>
+                  setFilters((current) => ({ ...current, status: value as "" | SerialStatus }))
                 }
-              >
-                <option value="">Todos los estados</option>
-                {serialStatusOptions.map((status) => (
-                  <option key={status.value} value={status.value}>
-                    {status.label}
-                  </option>
-                ))}
-              </select>
+                className={inputClassName}
+                placeholder="Todos los estados"
+                searchPlaceholder="Buscar estado..."
+                ariaLabel="Filtrar por estado"
+              />
             </label>
           </div>
 

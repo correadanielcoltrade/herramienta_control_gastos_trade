@@ -10,6 +10,7 @@ import { serialsApi } from "../api/serials.api";
 import { usersApi } from "../api/users.api";
 import { Panel } from "../components/Panel";
 import { PageTitle } from "../components/PageTitle";
+import { SearchableSelect, type SearchableSelectOption } from "../components/SearchableSelect";
 import { StatCard } from "../components/StatCard";
 import { useAuth } from "../hooks/useAuth";
 import type { DashboardFilters, DashboardPoint, SerialStatus, SupplyFilters } from "../types";
@@ -413,13 +414,14 @@ export function DashboardPage() {
       {
         name: "Pendientes",
         rows: [
-          ["serial", "descripcion_producto", "ultimo_movimiento", "dias_pendiente", "cav", "estado"],
+          ["serial", "descripcion_producto", "ultimo_movimiento", "dias_pendiente", "cav", "centro_costos", "estado"],
           ...pendienteSerials.map((item) => [
             item.serial,
             item.descripcion_producto ?? "",
             formatDashboardDate(item.last_movement_at),
             getPendingDays(item.last_movement_at),
             item.cav?.nombre_cav ?? "",
+            item.cav?.centro_costos ?? "",
             formatSerialStatus(item.current_status),
           ]),
         ],
@@ -450,6 +452,22 @@ export function DashboardPage() {
     ]);
   }
 
+  const isSuperAdmin = user?.role.name === "SuperAdmin";
+  const cavFilterOptions: SearchableSelectOption[] = [
+    { value: "", label: "Todos los CAVs" },
+    ...(cavsQuery.data ?? []).map((cav) => ({ value: String(cav.id), label: cav.nombre_cav })),
+  ];
+  const statusFilterOptions: SearchableSelectOption[] = [
+    { value: "", label: "Todos los estados" },
+    ...serialStatusOptions.map((status) => ({ value: status.value, label: status.label })),
+  ];
+  const userFilterOptions: SearchableSelectOption[] = [
+    { value: "", label: isSuperAdmin ? "Todos los usuarios" : "Usuario actual" },
+    ...(usersQuery.data ?? []).map((item) => ({ value: String(item.id), label: item.nombre_usuario })),
+  ];
+  const filterTriggerClassName =
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100/70";
+
   return (
     <div className="space-y-6">
       <PageTitle
@@ -469,59 +487,50 @@ export function DashboardPage() {
 
       <Panel title="Filtros de control" subtitle="Puedes acotar los dashboards por CAV, fecha, estado y usuario.">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <select
-            value={filters.cav_id ?? ""}
-            onChange={(event) =>
+          <SearchableSelect
+            options={cavFilterOptions}
+            value={filters.cav_id !== undefined ? String(filters.cav_id) : ""}
+            onChange={(value) =>
               setFilters((current) => ({
                 ...current,
-                cav_id: event.target.value ? Number(event.target.value) : undefined,
+                cav_id: value ? Number(value) : undefined,
               }))
             }
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
             disabled={!hasGlobalAccess}
-          >
-            <option value="">Todos los CAVs</option>
-            {cavsQuery.data?.map((cav) => (
-              <option key={cav.id} value={cav.id}>
-                {cav.nombre_cav}
-              </option>
-            ))}
-          </select>
-          <select
+            className={filterTriggerClassName}
+            placeholder="Todos los CAVs"
+            searchPlaceholder="Buscar CAV..."
+            ariaLabel="Filtrar por CAV"
+          />
+          <SearchableSelect
+            options={statusFilterOptions}
             value={filters.status ?? ""}
-            onChange={(event) =>
+            onChange={(value) =>
               setFilters((current) => ({
                 ...current,
-                status: event.target.value ? (event.target.value as SerialStatus) : undefined,
+                status: value ? (value as SerialStatus) : undefined,
               }))
             }
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-          >
-            <option value="">Todos los estados</option>
-            {serialStatusOptions.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.user_id ?? ""}
-            onChange={(event) =>
+            className={filterTriggerClassName}
+            placeholder="Todos los estados"
+            searchPlaceholder="Buscar estado..."
+            ariaLabel="Filtrar por estado"
+          />
+          <SearchableSelect
+            options={userFilterOptions}
+            value={filters.user_id !== undefined ? String(filters.user_id) : ""}
+            onChange={(value) =>
               setFilters((current) => ({
                 ...current,
-                user_id: event.target.value ? Number(event.target.value) : undefined,
+                user_id: value ? Number(value) : undefined,
               }))
             }
-            className="rounded-2xl border border-slate-200 px-4 py-3 text-sm"
-            disabled={user?.role.name !== "SuperAdmin"}
-          >
-            <option value="">{user?.role.name === "SuperAdmin" ? "Todos los usuarios" : "Usuario actual"}</option>
-            {usersQuery.data?.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre_usuario}
-              </option>
-            ))}
-          </select>
+            disabled={!isSuperAdmin}
+            className={filterTriggerClassName}
+            placeholder={isSuperAdmin ? "Todos los usuarios" : "Usuario actual"}
+            searchPlaceholder="Buscar usuario..."
+            ariaLabel="Filtrar por usuario"
+          />
           <input
             type="date"
             value={filters.start_date ?? ""}
@@ -886,12 +895,13 @@ export function DashboardPage() {
                       <th className="px-4 py-3 font-semibold">Ultimo movimiento</th>
                       <th className="px-4 py-3 font-semibold">Dias pendiente</th>
                       <th className="px-4 py-3 font-semibold">CAV</th>
+                      <th className="px-4 py-3 font-semibold">Centro de costo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {pendienteSerialsQuery.isLoading ? (
                       <tr>
-                        <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                        <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
                           Cargando seriales pendientes...
                         </td>
                       </tr>
@@ -907,11 +917,12 @@ export function DashboardPage() {
                             </span>
                           </td>
                           <td className="px-4 py-4">{item.cav?.nombre_cav ?? "Sin CAV"}</td>
+                          <td className="px-4 py-4">{item.cav?.centro_costos ?? "Sin centro de costo"}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                        <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
                           No hay seriales pendientes con los filtros actuales.
                         </td>
                       </tr>

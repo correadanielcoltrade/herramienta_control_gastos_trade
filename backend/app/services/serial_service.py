@@ -255,6 +255,84 @@ def create_movement(
     db.add(movement)
 
 
+def _reconcile_pending_supply(
+    db: Session,
+    *,
+    serial_obj: Serial,
+    payload: AbastecimientoCreate,
+    centro_costos_cav: str,
+    current_user: User,
+) -> Abastecimiento:
+    """Completa el abastecimiento de un serial recibido como PENDIENTE.
+
+    El serial ya fue recibido fisicamente (tiene su recepcion registrada) pero
+    nunca paso por abastecimiento, por lo que quedo en estado PENDIENTE. Aqui
+    registramos el abastecimiento faltante y lo disponibilizamos para legalizar,
+    sin alterar el flujo normal de creacion de seriales nuevos.
+    """
+    ensure_cav_scope(current_user, serial_obj.cav_id)
+
+    serial_obj.descripcion_producto = payload.descripcion_producto
+    serial_obj.cav_id = payload.cav_id
+    serial_obj.last_movement_at = payload.fecha_envio
+
+    supply = Abastecimiento(
+        serial_id=serial_obj.id,
+        descripcion_producto=payload.descripcion_producto,
+        material=resolve_material(payload.descripcion_producto),
+        numero_guia=payload.numero_guia.strip(),
+        cav_id=payload.cav_id,
+        centro_costos_cav=centro_costos_cav,
+        fecha_envio=payload.fecha_envio,
+        fecha_entrega_pdv=payload.fecha_entrega_pdv,
+        estado_entrega=resolve_estado_entrega(payload.estado_entrega),
+        usuario_id=current_user.id,
+    )
+    db.add(supply)
+    db.flush()
+
+    create_movement(
+        db,
+        serial_obj=serial_obj,
+        movement_type=MovementType.ABASTECIMIENTO,
+        previous_status=SerialStatus.PENDIENTE,
+        new_status=SerialStatus.ENVIADO,
+        source_table="abastecimientos",
+        source_id=supply.id,
+        cav_id=payload.cav_id,
+        user_id=current_user.id,
+        notes="Abastecimiento conciliado para serial recibido como pendiente.",
+    )
+    create_movement(
+        db,
+        serial_obj=serial_obj,
+        movement_type=MovementType.DISPONIBILIDAD,
+        previous_status=SerialStatus.ENVIADO,
+        new_status=SerialStatus.DISPONIBLE,
+        source_table="abastecimientos",
+        source_id=supply.id,
+        cav_id=payload.cav_id,
+        user_id=current_user.id,
+        notes="Serial disponible para legalizar (ya habia sido recibido).",
+    )
+    register_audit_log(
+        db,
+        action="reconcile_pending_supply",
+        entity="serial",
+        entity_id=serial_obj.id,
+        user_id=current_user.id,
+        payload={
+            "serial": serial_obj.serial,
+            "numero_guia": payload.numero_guia.strip(),
+            "cav_id": payload.cav_id,
+            "centro_costos_cav": centro_costos_cav,
+            "fecha_envio": payload.fecha_envio.isoformat(),
+        },
+    )
+    db.commit()
+    return get_supply_by_id(db, supply.id) or supply
+
+
 def register_supply(
     db: Session,
     payload: AbastecimientoCreate,
@@ -266,11 +344,23 @@ def register_supply(
     if not cav_obj:
         raise ApiError("CAV no encontrado.", 404)
 
+    centro_costos_cav = payload.centro_costos_cav.strip() or cav_obj.centro_costos
+
     existing = get_serial_by_code(db, payload.serial)
     if existing:
+        # Mejora: un serial que fue recibido sin abastecimiento previo queda en
+        # estado PENDIENTE. En ese caso completamos el abastecimiento faltante y
+        # lo dejamos DISPONIBLE para legalizar, en lugar de rechazarlo. Cualquier
+        # otro estado se sigue bloqueando igual que antes.
+        if existing.current_status == SerialStatus.PENDIENTE:
+            return _reconcile_pending_supply(
+                db,
+                serial_obj=existing,
+                payload=payload,
+                centro_costos_cav=centro_costos_cav,
+                current_user=current_user,
+            )
         raise ApiError(f"El serial {payload.serial} ya existe en inventario.", 409)
-
-    centro_costos_cav = payload.centro_costos_cav.strip() or cav_obj.centro_costos
 
     serial_obj = Serial(
         serial=payload.serial,
