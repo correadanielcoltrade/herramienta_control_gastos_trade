@@ -1,7 +1,13 @@
 from flask import Blueprint, request
 from sqlalchemy import func, select
 
-from app.api.deps import get_current_user, has_global_cav_access, login_required, require_roles
+from app.api.deps import (
+    get_current_user,
+    has_global_cav_access,
+    login_required,
+    regional_scoped_cav_ids,
+    require_roles,
+)
 from app.api.utils import dump_schema, dump_schema_list, json_response, parse_body
 from app.core.database import get_db
 from app.core.errors import ApiError
@@ -36,6 +42,9 @@ def list_cavs():
         if current_user.cav_id is None:
             return json_response([])
         stmt = stmt.where(CAV.id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        stmt = stmt.where(CAV.id.in_(regional_ids))
     cavs = list(db.scalars(stmt))
     return json_response(dump_schema_list([CAVRead.model_validate(cav) for cav in cavs]))
 

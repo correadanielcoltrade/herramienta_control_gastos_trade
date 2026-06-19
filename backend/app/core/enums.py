@@ -7,6 +7,7 @@ class RoleName(str, Enum):
     QUALITY = "Quality"
     TRADE = "Trade"
     TRADE_LEADER = "Trade Leader"
+    TRADE_MANAGER = "Trade Manager"
     ASESOR = "Asesor"
     SUPERNUMERARIO = "Supernumerario"
 

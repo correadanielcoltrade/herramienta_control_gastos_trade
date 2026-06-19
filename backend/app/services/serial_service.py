@@ -4,7 +4,7 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import ensure_cav_scope, has_global_cav_access
+from app.api.deps import ensure_cav_scope, has_global_cav_access, regional_scoped_cav_ids
 from app.core.enums import MovementType, RoleName, SerialStatus
 from app.core.errors import ApiError
 from app.models.abastecimiento import Abastecimiento
@@ -147,6 +147,9 @@ def list_receipts(
         if current_user.role.name == RoleName.ASESOR.value:
             stmt = stmt.where(Reception.usuario_id == current_user.id)
         stmt = stmt.where(Reception.cav_id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        stmt = stmt.where(Reception.cav_id.in_(regional_ids))
 
     return list(db.scalars(stmt))
 
@@ -174,6 +177,9 @@ def list_legalizations(
         if current_user.cav_id is None:
             return []
         stmt = stmt.where(Serial.cav_id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        stmt = stmt.where(Serial.cav_id.in_(regional_ids))
 
     return list(db.scalars(stmt))
 
@@ -301,7 +307,7 @@ def _reconcile_pending_supply(
         source_id=supply.id,
         cav_id=payload.cav_id,
         user_id=current_user.id,
-        notes="Abastecimiento conciliado para serial recibido como pendiente.",
+        notes="Abastecimiento conciliado para serial registrado como novedad.",
     )
     create_movement(
         db,
@@ -450,6 +456,9 @@ def list_supplies(
         if current_user.cav_id is None:
             return []
         stmt = stmt.where(Abastecimiento.cav_id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        stmt = stmt.where(Abastecimiento.cav_id.in_(regional_ids))
 
     return list(db.scalars(stmt))
 
@@ -657,7 +666,7 @@ def register_receipts(
         if not serial_obj:
             serial_obj = Serial(
                 serial=serial_code,
-                descripcion_producto="Pendiente de conciliacion",
+                descripcion_producto="Novedad",
                 cav_id=payload.cav_id,
                 current_status=SerialStatus.PENDIENTE,
                 created_by_id=current_user.id,

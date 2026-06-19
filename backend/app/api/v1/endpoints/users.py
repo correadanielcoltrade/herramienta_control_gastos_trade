@@ -23,8 +23,17 @@ def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
-ADMIN_ACCESS_ROLES = (RoleName.SUPERADMIN, RoleName.TRADE, RoleName.TRADE_LEADER)
-TRADE_ADMIN_ROLES = {normalize_role_name(RoleName.TRADE.value), normalize_role_name(RoleName.TRADE_LEADER.value)}
+ADMIN_ACCESS_ROLES = (
+    RoleName.SUPERADMIN,
+    RoleName.TRADE,
+    RoleName.TRADE_LEADER,
+    RoleName.TRADE_MANAGER,
+)
+TRADE_ADMIN_ROLES = {
+    normalize_role_name(RoleName.TRADE.value),
+    normalize_role_name(RoleName.TRADE_LEADER.value),
+    normalize_role_name(RoleName.TRADE_MANAGER.value),
+}
 TRADE_CREATABLE_ROLES = {normalize_role_name(RoleName.ASESOR.value), normalize_role_name(RoleName.TRADE.value)}
 TRADE_EDITABLE_ROLES = {
     normalize_role_name(RoleName.ASESOR.value),
@@ -35,6 +44,13 @@ TRADE_EDITABLE_ROLES = {
 
 def is_trade_admin(role_name: str) -> bool:
     return normalize_role_name(role_name) in TRADE_ADMIN_ROLES
+
+
+def regional_for_role(role: Role, regional: str | None) -> str | None:
+    """La regional solo aplica a usuarios con rol Trade; en cualquier otro rol queda en None."""
+    if normalize_role_name(role.name) == normalize_role_name(RoleName.TRADE.value):
+        return regional
+    return None
 
 
 def role_name_filter(role_names: set[str]):
@@ -104,6 +120,7 @@ def create_user():
         password_hash=get_password_hash(payload.password),
         role_id=payload.role_id,
         cav_id=payload.cav_id,
+        regional=regional_for_role(role, payload.regional),
         is_active=payload.is_active,
     )
     db.add(user)
@@ -169,6 +186,8 @@ def update_user(user_id: int):
             raise ApiError("El usuario requiere un CAV asignado.", 400)
     for field, value in changes.items():
         setattr(user, field, value)
+    effective_role = role if "role_id" in changes else user.role
+    user.regional = regional_for_role(effective_role, user.regional)
     register_audit_log(
         db,
         action="update_user",

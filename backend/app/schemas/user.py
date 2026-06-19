@@ -15,6 +15,7 @@ class UserBase(BaseModel):
     correo: EmailStr
     role_id: int
     cav_id: int | None = None
+    regional: str | None = Field(default=None, max_length=80)
     is_active: bool = True
 
 
@@ -28,6 +29,7 @@ class UserUpdate(BaseModel):
     password: str | None = Field(default=None, min_length=8, max_length=128)
     role_id: int | None = None
     cav_id: int | None = None
+    regional: str | None = Field(default=None, max_length=80)
     is_active: bool | None = None
 
 

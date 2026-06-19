@@ -13,6 +13,7 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role_id: Mapped[int] = mapped_column(ForeignKey("roles.id"), nullable=False, index=True)
     cav_id: Mapped[int | None] = mapped_column(ForeignKey("cavs.id"), nullable=True, index=True)
+    regional: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
 
     role: Mapped["Role"] = relationship(back_populates="users")

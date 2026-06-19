@@ -4,6 +4,7 @@ VALUES
     ('OPS', 'Operacion y seguimiento logistico'),
     ('Quality', 'Control de calidad y validacion'),
     ('Trade', 'Gestion operativa del negocio'),
+    ('Trade Manager', 'Jefe de los usuarios Trade, misma vista operativa que Trade'),
     ('Asesor', 'Atencion y legalizacion en punto'),
     ('Supernumerario', 'Cobertura multi CAV')
 ON CONFLICT (name) DO NOTHING;

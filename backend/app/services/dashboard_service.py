@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import has_global_cav_access
+from app.api.deps import has_global_cav_access, regional_scoped_cav_ids
 from app.core.enums import SerialStatus
 from app.models.abastecimiento import Abastecimiento
 from app.models.legalization import Legalization
@@ -31,6 +31,9 @@ def build_summary(
             filters.append(Serial.id == -1)
         else:
             filters.append(Serial.cav_id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        filters.append(Serial.cav_id.in_(regional_ids))
 
     stmt = select(
         func.count(Serial.id),
@@ -79,6 +82,11 @@ def build_series(
             supply_filters.append(Abastecimiento.cav_id == current_user.cav_id)
             reception_filters.append(Reception.cav_id == current_user.cav_id)
             legalization_filters.append(Serial.cav_id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        supply_filters.append(Abastecimiento.cav_id.in_(regional_ids))
+        reception_filters.append(Reception.cav_id.in_(regional_ids))
+        legalization_filters.append(Serial.cav_id.in_(regional_ids))
     if user_id:
         supply_filters.append(Abastecimiento.usuario_id == user_id)
         reception_filters.append(Reception.usuario_id == user_id)
@@ -148,6 +156,8 @@ def build_series(
             available_by_date_stmt = available_by_date_stmt.where(Serial.id == -1)
         else:
             available_by_date_stmt = available_by_date_stmt.where(Serial.cav_id == current_user.cav_id)
+    if regional_ids is not None:
+        available_by_date_stmt = available_by_date_stmt.where(Serial.cav_id.in_(regional_ids))
     if start_date:
         available_by_date_stmt = available_by_date_stmt.where(func.date(Serial.updated_at) >= start_date)
     if end_date:

@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.enums import RoleName
 from app.core.security import decode_access_token
+from app.models.cav import CAV
 from app.models.user import User
 
 GLOBAL_CAV_ROLE_NAMES = {
@@ -17,6 +18,7 @@ GLOBAL_CAV_ROLE_NAMES = {
     RoleName.QUALITY.value,
     RoleName.TRADE.value,
     RoleName.TRADE_LEADER.value,
+    RoleName.TRADE_MANAGER.value,
     RoleName.SUPERNUMERARIO.value,
 }
 
@@ -92,6 +94,26 @@ def ensure_cav_scope(current_user: User, cav_id: int | None) -> None:
         return
     if cav_id is None or current_user.cav_id != cav_id:
         raise ApiError("Este usuario no puede operar fuera de su CAV.", 403)
+
+
+def parse_regionals(raw: str | None) -> list[str]:
+    """Convierte el campo regional (una o varias regionales separadas por coma) en lista."""
+    return [item.strip() for item in (raw or "").split(",") if item.strip()]
+
+
+def regional_scoped_cav_ids(current_user: User, db: Session) -> list[int] | None:
+    """CAV ids visibles para un usuario Trade segun su(s) regional(es).
+
+    Devuelve None cuando no hay restriccion por regional: otros roles, un Trade sin
+    regional asignada, o cuando incluye 'Todos'. En esos casos se conserva el alcance actual.
+    Una lista vacia significa que el usuario no ve ningun CAV (sus regionales no tienen CAVs).
+    """
+    if normalize_role_name(current_user.role.name) != normalize_role_name(RoleName.TRADE.value):
+        return None
+    regionals = parse_regionals(current_user.regional)
+    if not regionals or any(item.casefold() == "todos" for item in regionals):
+        return None
+    return list(db.scalars(select(CAV.id).where(CAV.regional.in_(regionals))))
 
 
 def extract_bearer_token(incoming_request) -> dict | None:

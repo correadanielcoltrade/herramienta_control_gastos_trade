@@ -2,7 +2,14 @@ from flask import Blueprint, request
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from app.api.deps import ensure_cav_scope, get_current_user, has_global_cav_access, login_required, require_roles
+from app.api.deps import (
+    ensure_cav_scope,
+    get_current_user,
+    has_global_cav_access,
+    login_required,
+    regional_scoped_cav_ids,
+    require_roles,
+)
 from app.api.utils import (
     dump_schema,
     dump_schema_list,
@@ -74,6 +81,9 @@ def list_serials():
         if current_user.cav_id is None:
             return json_response([])
         stmt = stmt.where(Serial.cav_id == current_user.cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        stmt = stmt.where(Serial.cav_id.in_(regional_ids))
     serials = list(db.scalars(stmt))
     return json_response(dump_schema_list([SerialRead.model_validate(item) for item in serials]))
 
@@ -114,6 +124,7 @@ def get_serial_movements(serial_id: int):
     RoleName.SUPERADMIN,
     RoleName.OPS,
     RoleName.TRADE,
+    RoleName.TRADE_MANAGER,
     RoleName.SUPERNUMERARIO,
 )
 def create_supply():
@@ -155,6 +166,7 @@ def get_supplies():
     RoleName.SUPERADMIN,
     RoleName.OPS,
     RoleName.TRADE,
+    RoleName.TRADE_MANAGER,
     RoleName.SUPERNUMERARIO,
 )
 def edit_supply(supply_id: int):
@@ -170,6 +182,7 @@ def edit_supply(supply_id: int):
     RoleName.SUPERADMIN,
     RoleName.OPS,
     RoleName.TRADE,
+    RoleName.TRADE_MANAGER,
     RoleName.SUPERNUMERARIO,
 )
 def remove_supply(supply_id: int):
@@ -184,6 +197,7 @@ def remove_supply(supply_id: int):
     RoleName.SUPERADMIN,
     RoleName.OPS,
     RoleName.TRADE,
+    RoleName.TRADE_MANAGER,
     RoleName.SUPERNUMERARIO,
 )
 def remove_supply_batch():
@@ -225,6 +239,7 @@ def get_receipts():
     RoleName.OPS,
     RoleName.QUALITY,
     RoleName.TRADE,
+    RoleName.TRADE_MANAGER,
     RoleName.ASESOR,
     RoleName.SUPERNUMERARIO,
 )
