@@ -234,6 +234,7 @@ export function DashboardPage() {
   const canSeePendienteSerials =
     user?.role.name === "SuperAdmin" ||
     user?.role.name === "Trade Leader" ||
+    user?.role.name === "Trade Manager" ||
     user?.role.name === "Trade";
   const liveRefreshOptions = {
     enabled: Boolean(user),
@@ -410,11 +411,11 @@ export function DashboardPage() {
       return;
     }
 
-    triggerExcelDownload("seriales-pendientes.xlsx", [
+    triggerExcelDownload("novedades.xlsx", [
       {
-        name: "Pendientes",
+        name: "Novedades",
         rows: [
-          ["serial", "descripcion_producto", "ultimo_movimiento", "dias_pendiente", "cav", "centro_costos", "estado"],
+          ["serial", "descripcion_producto", "ultimo_movimiento", "dias_en_novedad", "cav", "centro_costos", "estado"],
           ...pendienteSerials.map((item) => [
             item.serial,
             item.descripcion_producto ?? "",
@@ -482,7 +483,7 @@ export function DashboardPage() {
         <StatCard label="Disponibles" value={summary?.disponibles ?? 0} tone="accent" />
         <StatCard label="Legalizados" value={summary?.legalizados ?? 0} tone="slate" />
         <StatCard label="Duplicados" value={summary?.duplicados ?? 0} tone="brand" />
-        <StatCard label="Pendientes" value={summary?.pendientes ?? 0} tone="brand" />
+        <StatCard label="Novedades" value={summary?.pendientes ?? 0} tone="brand" />
       </div>
 
       <Panel title="Filtros de control" subtitle="Puedes acotar los dashboards por CAV, fecha, estado y usuario.">
@@ -862,16 +863,16 @@ export function DashboardPage() {
 
       {canSeePendienteSerials ? (
         <Panel
-          title="Seriales pendientes"
-          subtitle="Seriales recibidos sin abastecimiento previo (estado pendiente de conciliacion). Visible solo para SuperAdmin, Trade Leader y Trade."
+          title="Novedades"
+          subtitle="Seriales que el asesor registro al recibir pero que no existen en abastecimiento. Visible para SuperAdmin, Trade y Trade Manager."
         >
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-base font-semibold text-slate-900">Pendientes de conciliacion</p>
+                <p className="text-base font-semibold text-slate-900">Novedades registradas</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {pendienteSerials.length} serial{pendienteSerials.length === 1 ? "" : "es"} en estado pendiente
-                  con los filtros actuales.
+                  {pendienteSerials.length} serial{pendienteSerials.length === 1 ? "" : "es"} registrado
+                  {pendienteSerials.length === 1 ? "" : "s"} como novedad con los filtros actuales.
                 </p>
               </div>
               <button
@@ -881,7 +882,7 @@ export function DashboardPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-brand-300 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-700 transition hover:bg-brand-100 hover:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Download size={16} />
-                Exportar pendientes
+                Exportar novedades
               </button>
             </div>
 
@@ -893,7 +894,7 @@ export function DashboardPage() {
                       <th className="px-4 py-3 font-semibold">Serial</th>
                       <th className="px-4 py-3 font-semibold">Producto</th>
                       <th className="px-4 py-3 font-semibold">Ultimo movimiento</th>
-                      <th className="px-4 py-3 font-semibold">Dias pendiente</th>
+                      <th className="px-4 py-3 font-semibold">Dias en novedad</th>
                       <th className="px-4 py-3 font-semibold">CAV</th>
                       <th className="px-4 py-3 font-semibold">Centro de costo</th>
                     </tr>
@@ -902,7 +903,7 @@ export function DashboardPage() {
                     {pendienteSerialsQuery.isLoading ? (
                       <tr>
                         <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
-                          Cargando seriales pendientes...
+                          Cargando novedades...
                         </td>
                       </tr>
                     ) : pendientePagination.pageRows.length > 0 ? (
@@ -923,7 +924,7 @@ export function DashboardPage() {
                     ) : (
                       <tr>
                         <td className="px-4 py-8 text-center text-slate-500" colSpan={6}>
-                          No hay seriales pendientes con los filtros actuales.
+                          No hay novedades con los filtros actuales.
                         </td>
                       </tr>
                     )}

@@ -7,7 +7,7 @@ const statusLabels: Record<SerialStatus, string> = {
   gastado: "Gastado",
   legalizado: "Legalizado",
   duplicado: "Duplicado",
-  pendiente: "Pendiente",
+  pendiente: "Novedad",
 };
 
 export const serialStatusOptions = Object.entries(statusLabels).map(([value, label]) => ({

@@ -12,18 +12,75 @@ import type { Cav, Role, RoleName, User } from "../types";
 import { canManageRole } from "../utils/access";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
-const REGIONAL_OPTIONS = ["Zona Norte", "Zona Sur", "Plaza Claro", "Fuera de Coltrade"] as const;
+const REGIONAL_OPTIONS = ["Todos", "Zona Norte", "Zona Sur", "Plaza Claro", "Fuera de Coltrade"] as const;
 const TRADE_CREATABLE_ROLES: RoleName[] = ["Asesor", "Trade"];
 const TRADE_CREATABLE_ROLE_KEYS = new Set(TRADE_CREATABLE_ROLES.map((role) => normalizeRoleLabel(role)));
 
+const VALIDATION_FIELD_MESSAGES: Record<string, string> = {
+  nombre_usuario: "El nombre debe tener al menos 2 caracteres.",
+  correo: "El correo no tiene un formato valido.",
+  password: "La contrasena debe tener al menos 8 caracteres.",
+  role_id: "Debes seleccionar un rol valido.",
+  cav_id: "El CAV seleccionado no es valido.",
+};
+
+type ValidationDetail = { loc?: Array<string | number>; msg?: string };
+
+function formatValidationError(detail: ValidationDetail): string {
+  const field = detail.loc?.[detail.loc.length - 1];
+  if (typeof field === "string" && VALIDATION_FIELD_MESSAGES[field]) {
+    return VALIDATION_FIELD_MESSAGES[field];
+  }
+  return detail.msg ?? "Hay un campo con un valor invalido.";
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
-  return (
-    (error as { response?: { data?: { detail?: string } } } | null)?.response?.data?.detail ?? fallback
-  );
+  const data = (
+    error as { response?: { data?: { detail?: string; errors?: ValidationDetail[] } } } | null
+  )?.response?.data;
+
+  if (data?.errors && data.errors.length > 0) {
+    return Array.from(new Set(data.errors.map(formatValidationError))).join(" ");
+  }
+
+  return data?.detail ?? fallback;
 }
 
 function normalizeRoleLabel(roleName: string) {
   return roleName.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function RegionalCheckboxes({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const selected = value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  function toggle(option: string) {
+    const next = selected.includes(option)
+      ? selected.filter((item) => item !== option)
+      : [...selected, option];
+    onChange(next.join(","));
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {REGIONAL_OPTIONS.map((option) => (
+        <label
+          key={option}
+          className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
+        >
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-400"
+            checked={selected.includes(option)}
+            onChange={() => toggle(option)}
+          />
+          <span>{option}</span>
+        </label>
+      ))}
+    </div>
+  );
 }
 
 function paginateRows<T>(rows: T[], page: number, pageSize: number) {
@@ -340,6 +397,7 @@ export function AdminPage() {
     password: "",
     role_id: "",
     cav_id: "",
+    regional: "",
     is_active: true,
   });
   const [userEditForm, setUserEditForm] = useState({
@@ -348,6 +406,7 @@ export function AdminPage() {
     password: "",
     role_id: "",
     cav_id: "",
+    regional: "",
     is_active: true,
   });
 
@@ -391,6 +450,7 @@ export function AdminPage() {
         password: "",
         role_id: "",
         cav_id: "",
+        regional: "",
         is_active: true,
       });
       setIsCreatingUser(false);
@@ -410,6 +470,7 @@ export function AdminPage() {
         password: string;
         role_id: number;
         cav_id: number | null;
+        regional: string | null;
         is_active: boolean;
       }>;
     }) => usersApi.update(userId, payload),
@@ -431,6 +492,14 @@ export function AdminPage() {
   const editableRoles = (rolesQuery.data ?? []).filter((role) => canManageRole(currentRole, role.name));
   const creatableRoles = filterCreatableRoles(editableRoles, currentRole);
 
+  function isTradeRoleId(roleId: string) {
+    const role = (rolesQuery.data ?? []).find((item) => String(item.id) === roleId);
+    return role ? normalizeRoleLabel(role.name) === "trade" : false;
+  }
+
+  const showCreateRegional = isTradeRoleId(userForm.role_id);
+  const showEditRegional = isTradeRoleId(userEditForm.role_id);
+
   function closeCavEditModal() {
     setEditingCavId(null);
     setCavEditForm({ nombre_cav: "", centro_costos: "", regional: "" });
@@ -444,6 +513,7 @@ export function AdminPage() {
       password: "",
       role_id: "",
       cav_id: "",
+      regional: "",
       is_active: true,
     });
   }
@@ -466,6 +536,7 @@ export function AdminPage() {
       password: "",
       role_id: creatableRoles.length === 1 ? String(creatableRoles[0].id) : "",
       cav_id: "",
+      regional: "",
       is_active: true,
     });
   }
@@ -478,6 +549,7 @@ export function AdminPage() {
       password: "",
       role_id: "",
       cav_id: "",
+      regional: "",
       is_active: true,
     });
   }
@@ -499,6 +571,7 @@ export function AdminPage() {
       password: "",
       role_id: String(user.role_id),
       cav_id: user.cav_id ? String(user.cav_id) : "",
+      regional: user.regional ?? "",
       is_active: user.is_active,
     });
   }
@@ -545,6 +618,7 @@ export function AdminPage() {
       ...userForm,
       role_id: Number(userForm.role_id),
       cav_id: userForm.cav_id ? Number(userForm.cav_id) : null,
+      regional: showCreateRegional ? userForm.regional || null : null,
     };
 
     try {
@@ -565,6 +639,7 @@ export function AdminPage() {
       ...userEditForm,
       role_id: Number(userEditForm.role_id),
       cav_id: userEditForm.cav_id ? Number(userEditForm.cav_id) : null,
+      regional: showEditRegional ? userEditForm.regional || null : null,
       password: userEditForm.password || undefined,
     };
 
@@ -914,6 +989,7 @@ export function AdminPage() {
                   placeholder="Nombre completo"
                   value={userEditForm.nombre_usuario}
                   onChange={(event) => setUserEditForm((current) => ({ ...current, nombre_usuario: event.target.value }))}
+                  minLength={2}
                   required
                 />
               </ModalField>
@@ -934,11 +1010,13 @@ export function AdminPage() {
               <ModalField label="Nueva contrasena">
                 <input
                   className={modalInputClassName}
-                  placeholder="Opcional"
+                  placeholder="Opcional (minimo 8 caracteres)"
                   type="password"
                   value={userEditForm.password}
                   onChange={(event) => setUserEditForm((current) => ({ ...current, password: event.target.value }))}
+                  minLength={8}
                 />
+                <p className="mt-1 text-xs text-slate-400">Dejala en blanco para conservar la actual.</p>
               </ModalField>
             </div>
             <ModalField label="Rol">
@@ -970,6 +1048,19 @@ export function AdminPage() {
                 ))}
               </select>
             </ModalField>
+            {showEditRegional ? (
+              <div className="sm:col-span-2">
+                <ModalField label="Regionales">
+                  <RegionalCheckboxes
+                    value={userEditForm.regional}
+                    onChange={(next) => setUserEditForm((current) => ({ ...current, regional: next }))}
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    Solo aplica a usuarios con rol Trade. Puedes seleccionar varias.
+                  </p>
+                </ModalField>
+              </div>
+            ) : null}
           </div>
           {updateUserMutation.error ? (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{userUpdateErrorMessage}</p>
@@ -1077,6 +1168,7 @@ export function AdminPage() {
                   placeholder="Nombre completo"
                   value={userForm.nombre_usuario}
                   onChange={(event) => setUserForm((current) => ({ ...current, nombre_usuario: event.target.value }))}
+                  minLength={2}
                   required
                 />
               </ModalField>
@@ -1097,12 +1189,14 @@ export function AdminPage() {
               <ModalField label="Contrasena">
                 <input
                   className={modalInputClassName}
-                  placeholder="Ingresa la contraseña"
+                  placeholder="Minimo 8 caracteres"
                   type="password"
                   value={userForm.password}
                   onChange={(event) => setUserForm((current) => ({ ...current, password: event.target.value }))}
+                  minLength={8}
                   required
                 />
+                <p className="mt-1 text-xs text-slate-400">La contraseña debe tener al menos 8 caracteres.</p>
               </ModalField>
             </div>
             <ModalField label="Rol">
@@ -1134,6 +1228,19 @@ export function AdminPage() {
                 ))}
               </select>
             </ModalField>
+            {showCreateRegional ? (
+              <div className="sm:col-span-2">
+                <ModalField label="Regionales">
+                  <RegionalCheckboxes
+                    value={userForm.regional}
+                    onChange={(next) => setUserForm((current) => ({ ...current, regional: next }))}
+                  />
+                  <p className="mt-1 text-xs text-slate-400">
+                    Solo aplica a usuarios con rol Trade. Puedes seleccionar varias.
+                  </p>
+                </ModalField>
+              </div>
+            ) : null}
           </div>
           {userMutation.error ? (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">{userErrorMessage}</p>

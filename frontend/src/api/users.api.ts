@@ -16,6 +16,7 @@ export const usersApi = {
     password: string;
     role_id: number;
     cav_id: number | null;
+    regional: string | null;
     is_active: boolean;
   }) {
     const { data } = await apiClient.post<User>("/users", payload);
@@ -29,6 +30,7 @@ export const usersApi = {
       password: string;
       role_id: number;
       cav_id: number | null;
+      regional: string | null;
       is_active: boolean;
     }>,
   ) {

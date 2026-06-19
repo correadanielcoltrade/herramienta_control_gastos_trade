@@ -46,7 +46,7 @@ export function ScanPage() {
       }
 
       if (data.pendientes.length > 0) {
-        successMessage += `${data.pendientes.length} pendiente(s) en espera. `;
+        successMessage += `${data.pendientes.length} novedad(es) registrada(s). `;
       }
 
       if (data.duplicados.length > 0) {

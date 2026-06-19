@@ -35,6 +35,12 @@ const rolePermissionsMatrix: Record<RoleName, RolePermissions> = {
     legalization: ["read", "create", "edit", "delete"],
     admin: ["read", "create", "edit", "delete"],
   },
+  "Trade Manager": {
+    dashboard: ["read"],
+    scan: ["read", "create", "edit", "delete"],
+    legalization: ["read", "create", "edit", "delete"],
+    admin: ["read", "create", "edit", "delete"],
+  },
   Asesor: {
     dashboard: ["read"],
     scan: ["read", "create"],
@@ -54,6 +60,7 @@ const globalCavRoles: RoleName[] = [
   "Quality",
   "Trade",
   "Trade Leader",
+  "Trade Manager",
   "Supernumerario",
 ];
 
@@ -150,7 +157,7 @@ export function canManageRole(
   const target = findRoleName(targetRole);
   if (!manager || !target) return false;
   if (manager === "SuperAdmin") return true;
-  if (manager === "Trade" || manager === "Trade Leader") {
+  if (manager === "Trade" || manager === "Trade Leader" || manager === "Trade Manager") {
     return target === "Trade" || target === "Asesor" || target === "Supernumerario";
   }
   return false;

@@ -4,6 +4,7 @@ export type RoleName =
   | "Quality"
   | "Trade"
   | "Trade Leader"
+  | "Trade Manager"
   | "Asesor"
   | "Supernumerario";
 
@@ -44,6 +45,7 @@ export interface User {
   correo: string;
   role_id: number;
   cav_id: number | null;
+  regional?: string | null;
   is_active: boolean;
   role: Role;
   cav?: Cav | null;
