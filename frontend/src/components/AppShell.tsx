@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardCheck, LogOut, Menu, PackagePlus, PanelLeftClose, PanelLeftOpen, QrCode, Shield, X } from "lucide-react";
+import { AlertTriangle, BarChart3, ClipboardCheck, LogOut, Menu, PackagePlus, PanelLeftClose, PanelLeftOpen, QrCode, Shield, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
@@ -18,6 +18,7 @@ const navigation: NavItem[] = [
   { to: "/abastecimiento", label: "Abastecimiento", icon: PackagePlus, module: "supply" },
   { to: "/scan", label: "Recibo de inventario de gastos", icon: QrCode, module: "scan" },
   { to: "/legalizacion", label: "Legalizacion", icon: ClipboardCheck, module: "legalization" },
+  { to: "/novedades", label: "Solucion de novedades", icon: AlertTriangle, module: "novedades" },
   { to: "/admin", label: "Admin", icon: Shield, module: "admin" },
 ];
 

@@ -4,7 +4,12 @@ from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import ensure_cav_scope, has_global_cav_access, regional_scoped_cav_ids
+from app.api.deps import (
+    cav_ids_for_regional,
+    ensure_cav_scope,
+    has_global_cav_access,
+    regional_scoped_cav_ids,
+)
 from app.core.enums import MovementType, RoleName, SerialStatus
 from app.core.errors import ApiError
 from app.models.abastecimiento import Abastecimiento
@@ -162,11 +167,15 @@ def list_legalizations(
     end_date: date | None = None,
     start_date: date | None = None,
     user_id: int | None = None,
+    regional: str | None = None,
 ) -> list[Legalization]:
     stmt = _legalization_detail_stmt().join(Legalization.serial).order_by(Legalization.fecha.desc(), Legalization.id.desc())
 
     if cav_id:
         stmt = stmt.where(Serial.cav_id == cav_id)
+    regional_filter_ids = cav_ids_for_regional(db, regional)
+    if regional_filter_ids is not None:
+        stmt = stmt.where(Serial.cav_id.in_(regional_filter_ids))
     if user_id:
         stmt = stmt.where(Legalization.usuario_id == user_id)
     if start_date:
@@ -435,6 +444,7 @@ def list_supplies(
     start_date: date | None = None,
     status: SerialStatus | None = None,
     user_id: int | None = None,
+    regional: str | None = None,
 ) -> list[Abastecimiento]:
     stmt = _supply_detail_stmt().join(Abastecimiento.serial).order_by(Abastecimiento.fecha_envio.desc())
 
@@ -442,6 +452,9 @@ def list_supplies(
         stmt = stmt.where(Serial.current_status == status)
     if cav_id:
         stmt = stmt.where(Abastecimiento.cav_id == cav_id)
+    regional_filter_ids = cav_ids_for_regional(db, regional)
+    if regional_filter_ids is not None:
+        stmt = stmt.where(Abastecimiento.cav_id.in_(regional_filter_ids))
     if serial:
         stmt = stmt.where(Serial.serial.ilike(f"%{serial}%"))
     if producto:

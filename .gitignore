@@ -14,3 +14,6 @@ backend/error.log
 check_roles.py
 fix_trade_role.py
 verify_schema.py
+add_trade_manager_role.py
+backup_*.json
+memory/

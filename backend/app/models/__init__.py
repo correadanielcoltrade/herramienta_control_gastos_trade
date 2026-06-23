@@ -2,6 +2,7 @@ from app.models.abastecimiento import Abastecimiento
 from app.models.audit_log import AuditLog
 from app.models.cav import CAV
 from app.models.legalization import Legalization
+from app.models.novedad_resolucion import NovedadResolucion
 from app.models.password_reset_token import PasswordResetToken
 from app.models.reception import Reception
 from app.models.role import Role
@@ -14,6 +15,7 @@ __all__ = [
     "AuditLog",
     "CAV",
     "Legalization",
+    "NovedadResolucion",
     "PasswordResetToken",
     "Reception",
     "Role",

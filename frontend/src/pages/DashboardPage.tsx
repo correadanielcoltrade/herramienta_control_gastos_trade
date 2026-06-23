@@ -274,6 +274,7 @@ export function DashboardPage() {
     end_date: filters.end_date,
     status: "enviado",
     user_id: filters.user_id,
+    regional: filters.regional,
   };
   const pendingSuppliesQuery = useQuery({
     queryKey: ["dashboard", "pending-supplies", pendingSupplyFilters],
@@ -288,12 +289,14 @@ export function DashboardPage() {
       filters.user_id,
       filters.start_date,
       filters.end_date,
+      filters.regional,
     ],
     queryFn: () =>
       serialsApi.list({
         cav_id: filters.cav_id,
         user_id: filters.user_id,
         status: "disponible",
+        regional: filters.regional,
       }),
     ...liveRefreshOptions,
   });
@@ -303,12 +306,13 @@ export function DashboardPage() {
     ...liveRefreshOptions,
   });
   const pendienteSerialsQuery = useQuery({
-    queryKey: ["dashboard", "pendiente-serials", filters.cav_id, filters.user_id],
+    queryKey: ["dashboard", "pendiente-serials", filters.cav_id, filters.user_id, filters.regional],
     queryFn: () =>
       serialsApi.list({
         cav_id: filters.cav_id,
         user_id: filters.user_id,
         status: "pendiente",
+        regional: filters.regional,
       }),
     ...liveRefreshOptions,
     enabled: Boolean(user) && canSeePendienteSerials,
@@ -458,6 +462,14 @@ export function DashboardPage() {
     { value: "", label: "Todos los CAVs" },
     ...(cavsQuery.data ?? []).map((cav) => ({ value: String(cav.id), label: cav.nombre_cav })),
   ];
+  const regionalFilterOptions: SearchableSelectOption[] = [
+    { value: "", label: "Todas las regionales" },
+    ...Array.from(
+      new Set((cavsQuery.data ?? []).map((cav) => cav.regional).filter((value): value is string => Boolean(value))),
+    )
+      .sort()
+      .map((regional) => ({ value: regional, label: regional })),
+  ];
   const statusFilterOptions: SearchableSelectOption[] = [
     { value: "", label: "Todos los estados" },
     ...serialStatusOptions.map((status) => ({ value: status.value, label: status.label })),
@@ -486,8 +498,23 @@ export function DashboardPage() {
         <StatCard label="Novedades" value={summary?.pendientes ?? 0} tone="brand" />
       </div>
 
-      <Panel title="Filtros de control" subtitle="Puedes acotar los dashboards por CAV, fecha, estado y usuario.">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <Panel title="Filtros de control" subtitle="Puedes acotar los dashboards por regional, CAV, fecha, estado y usuario.">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <SearchableSelect
+            options={regionalFilterOptions}
+            value={filters.regional ?? ""}
+            onChange={(value) =>
+              setFilters((current) => ({
+                ...current,
+                regional: value || undefined,
+              }))
+            }
+            disabled={!hasGlobalAccess}
+            className={filterTriggerClassName}
+            placeholder="Todas las regionales"
+            searchPlaceholder="Buscar regional..."
+            ariaLabel="Filtrar por regional"
+          />
           <SearchableSelect
             options={cavFilterOptions}
             value={filters.cav_id !== undefined ? String(filters.cav_id) : ""}

@@ -12,11 +12,13 @@ const rolePermissionsMatrix: Record<RoleName, RolePermissions> = {
     scan: ["read", "create", "edit", "delete"],
     supply: ["read", "create", "edit", "delete"],
     legalization: ["read", "create", "edit", "delete"],
+    novedades: ["read", "create", "edit", "delete"],
     admin: ["read", "create", "edit", "delete"],
   },
   OPS: {
     dashboard: ["read"],
     supply: ["read", "create", "edit", "delete"],
+    novedades: ["read", "edit"],
   },
   Quality: {
     dashboard: ["read"],
@@ -33,12 +35,14 @@ const rolePermissionsMatrix: Record<RoleName, RolePermissions> = {
     dashboard: ["read"],
     scan: ["read", "create", "edit", "delete"],
     legalization: ["read", "create", "edit", "delete"],
+    novedades: ["read", "create", "edit", "delete"],
     admin: ["read", "create", "edit", "delete"],
   },
   "Trade Manager": {
     dashboard: ["read"],
     scan: ["read", "create", "edit", "delete"],
     legalization: ["read", "create", "edit", "delete"],
+    novedades: ["read", "create", "edit", "delete"],
     admin: ["read", "create", "edit", "delete"],
   },
   Asesor: {

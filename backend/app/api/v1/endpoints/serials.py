@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.api.deps import (
+    cav_ids_for_regional,
     ensure_cav_scope,
     get_current_user,
     has_global_cav_access,
@@ -66,6 +67,7 @@ def list_serials():
     status_filter = parse_optional_enum(SerialStatus, "status")
     user_id = parse_optional_int("user_id")
     serial = request.args.get("serial")
+    regional = request.args.get("regional")
     db = get_db()
     current_user = get_current_user(db)
     stmt = select(Serial).options(joinedload(Serial.cav)).order_by(Serial.updated_at.desc())
@@ -84,6 +86,9 @@ def list_serials():
     regional_ids = regional_scoped_cav_ids(current_user, db)
     if regional_ids is not None:
         stmt = stmt.where(Serial.cav_id.in_(regional_ids))
+    regional_filter_ids = cav_ids_for_regional(db, regional)
+    if regional_filter_ids is not None:
+        stmt = stmt.where(Serial.cav_id.in_(regional_filter_ids))
     serials = list(db.scalars(stmt))
     return json_response(dump_schema_list([SerialRead.model_validate(item) for item in serials]))
 
@@ -147,6 +152,7 @@ def get_supplies():
     start_date = parse_optional_date("start_date")
     status_filter = parse_optional_enum(SerialStatus, "status")
     user_id = parse_optional_int("user_id")
+    regional = request.args.get("regional")
     supplies = list_supplies(
         db,
         current_user=current_user,
@@ -157,6 +163,7 @@ def get_supplies():
         start_date=start_date,
         status=status_filter,
         user_id=user_id,
+        regional=regional,
     )
     return json_response(dump_schema_list([serialize_supply(item) for item in supplies]))
 
@@ -260,6 +267,7 @@ def get_legalizations():
     end_date = parse_optional_date("end_date")
     start_date = parse_optional_date("start_date")
     user_id = parse_optional_int("user_id")
+    regional = request.args.get("regional")
     legalizations = list_legalizations(
         db,
         current_user=current_user,
@@ -267,6 +275,7 @@ def get_legalizations():
         end_date=end_date,
         start_date=start_date,
         user_id=user_id,
+        regional=regional,
     )
     return json_response(dump_schema_list([serialize_legalization(item) for item in legalizations]))
 

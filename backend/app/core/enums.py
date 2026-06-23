@@ -22,6 +22,12 @@ class SerialStatus(str, Enum):
     PENDIENTE = "pendiente"
 
 
+class NovedadEstado(str, Enum):
+    PENDIENTE_OPS = "pendiente_ops"
+    APROBADA = "aprobada"
+    RECHAZADA = "rechazada"
+
+
 class MovementType(str, Enum):
     ABASTECIMIENTO = "abastecimiento"
     RECEPCION = "recepcion"

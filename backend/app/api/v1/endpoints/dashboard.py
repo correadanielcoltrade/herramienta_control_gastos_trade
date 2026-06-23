@@ -1,4 +1,4 @@
-from flask import Blueprint
+from flask import Blueprint, request
 
 from app.api.deps import get_current_user, login_required
 from app.api.utils import dump_schema, json_response, parse_optional_date, parse_optional_enum, parse_optional_int
@@ -19,6 +19,7 @@ def get_dashboard_summary():
     user_id = parse_optional_int("user_id")
     start_date = parse_optional_date("start_date")
     end_date = parse_optional_date("end_date")
+    regional = request.args.get("regional")
     db = get_db()
     current_user = get_current_user(db)
     summary = build_summary(
@@ -27,6 +28,7 @@ def get_dashboard_summary():
         cav_id=cav_id,
         status_filter=status,
         user_id=user_id,
+        regional=regional,
     )
     series = build_series(
         db,
@@ -36,6 +38,7 @@ def get_dashboard_summary():
         user_id=user_id,
         start_date=start_date,
         end_date=end_date,
+        regional=regional,
     )
     response = DashboardResponse(
         summary=DashboardSummary.model_validate(summary),

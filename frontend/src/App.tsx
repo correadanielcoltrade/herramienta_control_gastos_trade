@@ -9,6 +9,7 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { LegalizationPage } from "./pages/LegalizationPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { NovedadesPage } from "./pages/NovedadesPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { ScanPage } from "./pages/ScanPage";
 import { SupplyPage } from "./pages/SupplyPage";
@@ -41,6 +42,11 @@ export default function App() {
           <Route element={<ProtectedRoute module="supply" />}>
             <Route element={<AppShell />}>
               <Route path="/abastecimiento" element={<SupplyPage />} />
+            </Route>
+          </Route>
+          <Route element={<ProtectedRoute module="novedades" />}>
+            <Route element={<AppShell />}>
+              <Route path="/novedades" element={<NovedadesPage />} />
             </Route>
           </Route>
           <Route element={<ProtectedRoute module="admin" />}>

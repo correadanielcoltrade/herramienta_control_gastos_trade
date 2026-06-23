@@ -101,6 +101,18 @@ def parse_regionals(raw: str | None) -> list[str]:
     return [item.strip() for item in (raw or "").split(",") if item.strip()]
 
 
+def cav_ids_for_regional(db: Session, regional: str | None) -> list[int] | None:
+    """CAV ids de una regional, para usar como filtro opcional (elegido por el usuario).
+
+    Devuelve None cuando no hay filtro (vacio o 'Todos'). Una lista vacia significa que
+    ningun CAV pertenece a esa regional.
+    """
+    value = (regional or "").strip()
+    if not value or value.casefold() == "todos":
+        return None
+    return list(db.scalars(select(CAV.id).where(CAV.regional == value)))
+
+
 def regional_scoped_cav_ids(current_user: User, db: Session) -> list[int] | None:
     """CAV ids visibles para un usuario Trade segun su(s) regional(es).
 

@@ -7,6 +7,7 @@ def register_blueprints(app: Flask) -> None:
     from app.api.v1.endpoints.auth import auth_bp
     from app.api.v1.endpoints.cavs import cavs_bp
     from app.api.v1.endpoints.dashboard import dashboard_bp
+    from app.api.v1.endpoints.novedades import novedades_bp
     from app.api.v1.endpoints.serials import serials_bp
     from app.api.v1.endpoints.users import users_bp
 
@@ -15,3 +16,4 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(cavs_bp, url_prefix=f"{settings.api_v1_prefix}/cavs")
     app.register_blueprint(serials_bp, url_prefix=f"{settings.api_v1_prefix}/serials")
     app.register_blueprint(dashboard_bp, url_prefix=f"{settings.api_v1_prefix}/dashboard")
+    app.register_blueprint(novedades_bp, url_prefix=f"{settings.api_v1_prefix}/novedades")

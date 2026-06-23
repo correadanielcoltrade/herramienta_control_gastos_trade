@@ -13,6 +13,7 @@ export type ModuleName =
   | "scan"
   | "supply"
   | "legalization"
+  | "novedades"
   | "admin";
 
 export type PermissionAction = "read" | "create" | "edit" | "delete";
@@ -163,6 +164,7 @@ export interface SupplyFilters {
   start_date?: string;
   status?: SerialStatus;
   user_id?: number;
+  regional?: string;
 }
 
 export interface ReceiptPayload {
@@ -204,6 +206,7 @@ export interface SerialFilters {
   status?: SerialStatus;
   user_id?: number;
   serial?: string;
+  regional?: string;
 }
 
 export interface DashboardFilters {
@@ -212,6 +215,46 @@ export interface DashboardFilters {
   user_id?: number;
   start_date?: string;
   end_date?: string;
+  regional?: string;
+}
+
+export interface Novedad {
+  serial_id: number;
+  serial: string;
+  descripcion_producto?: string | null;
+  cav?: Cav | null;
+  last_movement_at?: string | null;
+  estado_resolucion: "nueva" | "en_aprobacion";
+  resolucion_id?: number | null;
+  observacion_ops?: string | null;
+}
+
+export interface NovedadResolucion {
+  id: number;
+  serial_id: number;
+  serial: string;
+  cav?: Cav | null;
+  estado: string;
+  observacion_trade: string;
+  observacion_ops?: string | null;
+  descripcion_producto: string;
+  numero_guia: string;
+  centro_costos_cav: string;
+  fecha_envio: string;
+  fecha_entrega_pdv?: string | null;
+  estado_entrega?: string | null;
+  creado_por?: string | null;
+  created_at: string;
+}
+
+export interface AprobarNovedadPayload {
+  observacion: string;
+  descripcion_producto: string;
+  numero_guia: string;
+  centro_costos_cav?: string | null;
+  fecha_envio: string;
+  fecha_entrega_pdv?: string | null;
+  estado_entrega?: string | null;
 }
 
 export interface ForgotPasswordPayload {
