@@ -38,6 +38,18 @@ class NovedadRead(BaseModel):
     observacion_ops: str | None = None
 
 
+class NovedadBajaRead(BaseModel):
+    """Registro de una novedad dada de baja, para la tabla de trazabilidad."""
+
+    id: int
+    serial: str
+    descripcion_producto: str | None = None
+    cav_nombre: str | None = None
+    motivo: str
+    usuario_nombre: str
+    created_at: datetime
+
+
 class NovedadResolucionRead(BaseModel):
     """Solicitud de ingreso a abastecimiento para la bandeja de OPS."""
 

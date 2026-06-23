@@ -8,7 +8,7 @@ import { novedadesApi } from "../api/novedades.api";
 import { PageTitle } from "../components/PageTitle";
 import { SearchableSelect, type SearchableSelectOption } from "../components/SearchableSelect";
 import { useAuth } from "../hooks/useAuth";
-import type { AprobarNovedadPayload, Novedad, NovedadResolucion } from "../types";
+import type { AprobarNovedadPayload, Novedad, NovedadBaja, NovedadResolucion } from "../types";
 
 const ESTADO_ENTREGA_OPTIONS = ["Pendiente de Entrega", "Entregado por Transportadora"] as const;
 
@@ -23,6 +23,12 @@ function formatDate(value?: string | null) {
   if (!value) return "Sin fecha";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "Sin fecha";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -103,6 +109,11 @@ function TradeSection() {
     queryFn: () =>
       novedadesApi.list(cavFilter ? Number(cavFilter) : undefined, regionalFilter || undefined),
   });
+  const bajasQuery = useQuery({
+    queryKey: ["novedades-bajas", cavFilter, regionalFilter],
+    queryFn: () =>
+      novedadesApi.listBajas(cavFilter ? Number(cavFilter) : undefined, regionalFilter || undefined),
+  });
 
   const regionalFilterOptions: SearchableSelectOption[] = [
     { value: "", label: "Todas las regionales" },
@@ -117,14 +128,17 @@ function TradeSection() {
     ...(cavsQuery.data ?? []).map((cav) => ({ value: String(cav.id), label: cav.nombre_cav })),
   ];
   const novedades = novedadesQuery.data ?? [];
+  const bajas = bajasQuery.data ?? [];
 
   function refresh() {
     queryClient.invalidateQueries({ queryKey: ["novedades"] });
+    queryClient.invalidateQueries({ queryKey: ["novedades-bajas"] });
     queryClient.invalidateQueries({ queryKey: ["novedades-aprobaciones"] });
   }
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-panel">
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-panel">
       <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h3 className="text-base font-semibold text-slate-900">Novedades por CAV</h3>
@@ -233,6 +247,9 @@ function TradeSection() {
           </tbody>
         </table>
       </div>
+      </section>
+
+      <BajasTable bajas={bajas} isLoading={bajasQuery.isLoading} />
 
       {bajaTarget ? (
         <DarDeBajaModal
@@ -254,6 +271,57 @@ function TradeSection() {
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+function BajasTable({ bajas, isLoading }: { bajas: NovedadBaja[]; isLoading: boolean }) {
+  return (
+    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-panel">
+      <div className="border-b border-slate-100 px-5 py-4">
+        <h3 className="text-base font-semibold text-slate-900">Seriales dados de baja</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Trazabilidad de las novedades eliminadas: motivo, responsable y fecha/hora.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[860px] divide-y divide-slate-100">
+          <thead className="bg-slate-50/80 text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Serial</th>
+              <th className="px-4 py-3 font-semibold">CAV</th>
+              <th className="px-4 py-3 font-semibold">Motivo</th>
+              <th className="px-4 py-3 font-semibold">Dado de baja por</th>
+              <th className="px-4 py-3 font-semibold">Fecha y hora</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-sm text-slate-700">
+            {isLoading ? (
+              <tr>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                  Cargando bajas...
+                </td>
+              </tr>
+            ) : bajas.length > 0 ? (
+              bajas.map((baja) => (
+                <tr key={baja.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-4 py-4 font-medium text-slate-900">{baja.serial}</td>
+                  <td className="px-4 py-4">{baja.cav_nombre ?? "Sin CAV"}</td>
+                  <td className="px-4 py-4 max-w-[320px] text-slate-600">{baja.motivo}</td>
+                  <td className="px-4 py-4">{baja.usuario_nombre}</td>
+                  <td className="px-4 py-4 whitespace-nowrap">{formatDateTime(baja.created_at)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={5}>
+                  No hay seriales dados de baja con los filtros actuales.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

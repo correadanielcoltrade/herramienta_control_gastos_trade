@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AprobarNovedadPayload, Novedad, NovedadResolucion } from "../types";
+import type { AprobarNovedadPayload, Novedad, NovedadBaja, NovedadResolucion } from "../types";
 
 export const novedadesApi = {
   async list(cavId?: number, regional?: string) {
@@ -7,6 +7,13 @@ export const novedadesApi = {
     if (cavId) params.cav_id = cavId;
     if (regional) params.regional = regional;
     const { data } = await apiClient.get<Novedad[]>("/novedades/", { params });
+    return data;
+  },
+  async listBajas(cavId?: number, regional?: string) {
+    const params: Record<string, string | number> = {};
+    if (cavId) params.cav_id = cavId;
+    if (regional) params.regional = regional;
+    const { data } = await apiClient.get<NovedadBaja[]>("/novedades/bajas", { params });
     return data;
   },
   async darDeBaja(serialId: number, observacion: string) {

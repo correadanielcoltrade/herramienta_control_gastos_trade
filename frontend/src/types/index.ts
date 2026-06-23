@@ -247,6 +247,16 @@ export interface NovedadResolucion {
   created_at: string;
 }
 
+export interface NovedadBaja {
+  id: number;
+  serial: string;
+  descripcion_producto?: string | null;
+  cav_nombre?: string | null;
+  motivo: string;
+  usuario_nombre: string;
+  created_at: string;
+}
+
 export interface AprobarNovedadPayload {
   observacion: string;
   descripcion_producto: string;

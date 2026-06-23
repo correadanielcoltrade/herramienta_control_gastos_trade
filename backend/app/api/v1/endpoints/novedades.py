@@ -27,6 +27,19 @@ def list_novedades():
     return json_response(dump_schema_list(items))
 
 
+@novedades_bp.get("/bajas")
+@require_roles(*TRADE_ROLES)
+def list_bajas():
+    db = get_db()
+    current_user = get_current_user(db)
+    cav_id = request.args.get("cav_id", type=int)
+    regional = request.args.get("regional")
+    items = novedad_service.list_bajas(
+        db, current_user=current_user, cav_id=cav_id, regional=regional
+    )
+    return json_response(dump_schema_list(items))
+
+
 @novedades_bp.post("/<int:serial_id>/dar-de-baja")
 @require_roles(*TRADE_ROLES)
 def dar_de_baja(serial_id: int):

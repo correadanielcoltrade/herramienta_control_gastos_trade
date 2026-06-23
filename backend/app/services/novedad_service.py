@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.enums import NovedadEstado, RoleName, SerialStatus
 from app.core.errors import ApiError
 from app.models.cav import CAV
+from app.models.novedad_baja import NovedadBaja
 from app.models.novedad_resolucion import NovedadResolucion
 from app.models.reception import Reception
 from app.models.role import Role
@@ -15,7 +16,12 @@ from app.models.serial import Serial
 from app.models.serial_movement import SerialMovement
 from app.models.user import User
 from app.schemas.cav import CAVRead
-from app.schemas.novedad import AprobarNovedadRequest, NovedadRead, NovedadResolucionRead
+from app.schemas.novedad import (
+    AprobarNovedadRequest,
+    NovedadBajaRead,
+    NovedadRead,
+    NovedadResolucionRead,
+)
 from app.schemas.serial import AbastecimientoCreate
 from app.services.audit_service import register_audit_log
 from app.services.email_service import EmailService
@@ -99,6 +105,17 @@ def dar_de_baja(db: Session, *, serial_id: int, observacion: str, current_user: 
         raise ApiError("La observacion es obligatoria.", 400)
 
     serial_code = serial.serial
+    db.add(
+        NovedadBaja(
+            serial=serial_code,
+            descripcion_producto=serial.descripcion_producto,
+            cav_id=serial.cav_id,
+            cav_nombre=serial.cav.nombre_cav if serial.cav else None,
+            motivo=observacion.strip(),
+            usuario_id=current_user.id,
+            usuario_nombre=current_user.nombre_usuario,
+        )
+    )
     db.execute(delete(NovedadResolucion).where(NovedadResolucion.serial_id == serial_id))
     db.execute(delete(SerialMovement).where(SerialMovement.serial_id == serial_id))
     db.execute(delete(Reception).where(Reception.serial_id == serial_id))
@@ -112,6 +129,33 @@ def dar_de_baja(db: Session, *, serial_id: int, observacion: str, current_user: 
     )
     db.delete(serial)
     db.commit()
+
+
+def list_bajas(
+    db: Session, *, current_user: User, cav_id: int | None = None, regional: str | None = None
+) -> list[NovedadBajaRead]:
+    stmt = select(NovedadBaja).order_by(NovedadBaja.created_at.desc(), NovedadBaja.id.desc())
+    if cav_id:
+        stmt = stmt.where(NovedadBaja.cav_id == cav_id)
+    regional_ids = regional_scoped_cav_ids(current_user, db)
+    if regional_ids is not None:
+        stmt = stmt.where(NovedadBaja.cav_id.in_(regional_ids))
+    regional_filter_ids = cav_ids_for_regional(db, regional)
+    if regional_filter_ids is not None:
+        stmt = stmt.where(NovedadBaja.cav_id.in_(regional_filter_ids))
+    bajas = list(db.scalars(stmt))
+    return [
+        NovedadBajaRead(
+            id=baja.id,
+            serial=baja.serial,
+            descripcion_producto=baja.descripcion_producto,
+            cav_nombre=baja.cav_nombre,
+            motivo=baja.motivo,
+            usuario_nombre=baja.usuario_nombre,
+            created_at=baja.created_at,
+        )
+        for baja in bajas
+    ]
 
 
 def aprobar_novedad(
