@@ -183,7 +183,65 @@ def _build_novedad_ops_html(
     """
 
 
+def _build_novedad_devuelta_html(
+    serial: str, cav_nombre: str, tipo_label: str, motivo_ops: str, resuelto_por: str, app_link: str
+) -> str:
+    return f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); padding: 20px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0;">Novedad devuelta</h1>
+          </div>
+
+          <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #ddd;">
+            <p>Hola equipo <strong>Trade</strong>,</p>
+
+            <p>OPS <strong>rechazó</strong> tu solicitud y la novedad volvió a quedar disponible para que la ajustes:</p>
+
+            <table style="width: 100%; background: #ffffff; border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 20px 0;">
+              <tr><td style="padding: 6px 0;"><strong>Serial:</strong></td><td style="padding: 6px 0;">{serial}</td></tr>
+              <tr><td style="padding: 6px 0;"><strong>CAV:</strong></td><td style="padding: 6px 0;">{cav_nombre}</td></tr>
+              <tr><td style="padding: 6px 0;"><strong>Solicitud:</strong></td><td style="padding: 6px 0;">{tipo_label}</td></tr>
+              <tr><td style="padding: 6px 0;"><strong>Rechazada por:</strong></td><td style="padding: 6px 0;">{resuelto_por}</td></tr>
+            </table>
+
+            <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 12px 16px; margin: 20px 0;">
+              <strong>Motivo de OPS:</strong><br>{motivo_ops}
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="{app_link}" target="_blank" rel="noopener noreferrer" style="background-color: #f97316; background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; border: 1px solid #f97316;">
+                <span style="color: #ffffff;">Ajustar la novedad</span>
+              </a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+            <p style="font-size: 12px; color: #999;">Herramienta de Control de Gastos Trade.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+
 class EmailService:
+    @staticmethod
+    def send_novedad_devuelta_trade(
+        recipient_email: str,
+        serial: str,
+        cav_nombre: str,
+        tipo_label: str,
+        motivo_ops: str,
+        resuelto_por: str,
+        app_link: str,
+    ) -> bool:
+        subject = f"Novedad devuelta por OPS - Serial {serial}"
+        html = _build_novedad_devuelta_html(
+            serial, cav_nombre, tipo_label, motivo_ops, resuelto_por, app_link
+        )
+        return EmailService._dispatch(recipient_email, subject, html)
+
     @staticmethod
     def send_novedad_pendiente_ops(
         recipient_email: str,

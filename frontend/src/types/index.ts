@@ -224,10 +224,41 @@ export interface Novedad {
   descripcion_producto?: string | null;
   cav?: Cav | null;
   last_movement_at?: string | null;
-  estado_resolucion: "nueva" | "en_aprobacion";
+  /** 'devuelta' = OPS la rechazo y volvio a Trade para ajustarla. */
+  estado_resolucion: "nueva" | "en_aprobacion" | "devuelta";
   resolucion_id?: number | null;
+  tipo_resolucion?: NovedadTipo | null;
   observacion_ops?: string | null;
+  devuelta_por?: string | null;
+  devuelta_at?: string | null;
+  recibido_por?: string | null;
+  fecha_recepcion?: string | null;
 }
+
+export interface NovedadSoporte {
+  id: number;
+  nombre_archivo: string;
+  content_type: string;
+  tamano_bytes: number;
+  subido_por_nombre?: string | null;
+  created_at: string;
+}
+
+export interface NovedadCerrada {
+  key: string;
+  serial: string;
+  cav_nombre?: string | null;
+  resultado: NovedadTipo;
+  observacion_trade: string;
+  observacion_ops?: string | null;
+  solicitado_por?: string | null;
+  aprobado_por?: string | null;
+  soporte?: NovedadSoporte | null;
+  cerrada_at?: string | null;
+}
+
+/** 'ingreso' = pasar el serial a abastecimiento; 'baja' = solucionar eliminandolo. */
+export type NovedadTipo = "ingreso" | "baja";
 
 export interface NovedadResolucion {
   id: number;
@@ -235,15 +266,18 @@ export interface NovedadResolucion {
   serial: string;
   cav?: Cav | null;
   estado: string;
+  tipo: NovedadTipo;
   observacion_trade: string;
   observacion_ops?: string | null;
-  descripcion_producto: string;
-  numero_guia: string;
-  centro_costos_cav: string;
-  fecha_envio: string;
+  // Solo vienen con datos en las solicitudes de tipo 'ingreso'.
+  descripcion_producto?: string | null;
+  numero_guia?: string | null;
+  centro_costos_cav?: string | null;
+  fecha_envio?: string | null;
   fecha_entrega_pdv?: string | null;
   estado_entrega?: string | null;
   creado_por?: string | null;
+  soporte?: NovedadSoporte | null;
   created_at: string;
 }
 
@@ -254,6 +288,8 @@ export interface NovedadBaja {
   cav_nombre?: string | null;
   motivo: string;
   usuario_nombre: string;
+  aprobado_por_nombre?: string | null;
+  observacion_ops?: string | null;
   created_at: string;
 }
 
@@ -261,6 +297,10 @@ export interface AprobarNovedadPayload {
   observacion: string;
   descripcion_producto: string;
   numero_guia: string;
+  /** CAV de origen elegido por Trade; permite corregir el origen de la novedad. */
+  cav_id?: number | null;
+  /** Soporte opcional en la rama de ingreso. */
+  soporte_id?: number | null;
   centro_costos_cav?: string | null;
   fecha_envio: string;
   fecha_entrega_pdv?: string | null;

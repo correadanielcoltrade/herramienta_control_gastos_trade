@@ -28,6 +28,13 @@ class NovedadEstado(str, Enum):
     RECHAZADA = "rechazada"
 
 
+class NovedadTipo(str, Enum):
+    """Que solicita Trade sobre la novedad; OPS es el filtro final en ambos casos."""
+
+    INGRESO = "ingreso"  # Ingresar el serial a abastecimiento.
+    BAJA = "baja"  # Solucionar la novedad eliminando el serial.
+
+
 class MovementType(str, Enum):
     ABASTECIMIENTO = "abastecimiento"
     RECEPCION = "recepcion"

@@ -4,6 +4,7 @@ from app.models.cav import CAV
 from app.models.legalization import Legalization
 from app.models.novedad_baja import NovedadBaja
 from app.models.novedad_resolucion import NovedadResolucion
+from app.models.novedad_soporte import NovedadSoporte
 from app.models.password_reset_token import PasswordResetToken
 from app.models.reception import Reception
 from app.models.role import Role
@@ -18,6 +19,7 @@ __all__ = [
     "Legalization",
     "NovedadBaja",
     "NovedadResolucion",
+    "NovedadSoporte",
     "PasswordResetToken",
     "Reception",
     "Role",

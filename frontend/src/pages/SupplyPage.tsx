@@ -13,6 +13,13 @@ import { SearchableSelect, type SearchableSelectOption } from "../components/Sea
 import { useAuth } from "../hooks/useAuth";
 import type { EstadoEntrega, SerialStatus, SupplyFilters, SupplyPayload, SupplyRecord, User } from "../types";
 import { canManageSupplies, hasGlobalCavAccess } from "../utils/access";
+import {
+  getMaterialForProducto,
+  normalizeProductoOption,
+  productoMaterialMap,
+  productoOptions,
+  productoOptionsByNormalized,
+} from "../utils/productos";
 import { formatSerialStatus, serialStatusOptions } from "../utils/status";
 
 const inputClassName =
@@ -88,28 +95,6 @@ const templateImportHeaders = [
   "estado_entrega",
   "nombre_cav",
 ];
-
-const productoOptions = ["Mate", "Privacy", "Blue light", "Estandar"] as const;
-
-const productoMaterialMap: Record<(typeof productoOptions)[number], string> = {
-  Mate: "7018735",
-  Privacy: "7018734",
-  "Blue light": "7015640",
-  Estandar: "7015490",
-};
-
-function normalizeProductoOption(value: string) {
-  return value.trim().toLowerCase();
-}
-
-const productoOptionsByNormalized = new Map(
-  productoOptions.map((option) => [normalizeProductoOption(option), option]),
-);
-
-function getMaterialForProducto(producto: string): string {
-  const matched = productoOptionsByNormalized.get(normalizeProductoOption(producto));
-  return matched ? productoMaterialMap[matched] : "";
-}
 
 function getErrorMessage(error: unknown, fallback: string) {
   return (
