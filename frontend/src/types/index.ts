@@ -223,6 +223,8 @@ export interface Novedad {
   serial: string;
   descripcion_producto?: string | null;
   cav?: Cav | null;
+  /** Momento en que el sistema genero la novedad. */
+  creada_at?: string | null;
   last_movement_at?: string | null;
   /** 'devuelta' = OPS la rechazo y volvio a Trade para ajustarla. */
   estado_resolucion: "nueva" | "en_aprobacion" | "devuelta";
@@ -302,7 +304,7 @@ export interface AprobarNovedadPayload {
   /** Soporte opcional en la rama de ingreso. */
   soporte_id?: number | null;
   centro_costos_cav?: string | null;
-  fecha_envio: string;
+  // Sin fecha_envio: el backend usa la fecha de creacion de la novedad.
   fecha_entrega_pdv?: string | null;
   estado_entrega?: string | null;
 }

@@ -22,14 +22,12 @@ import {
   productoOptionsByNormalized,
 } from "../utils/productos";
 
-const ESTADO_ENTREGA_OPTIONS = ["Pendiente de Entrega", "Entregado por Transportadora"] as const;
+/** En Solucion de novedades el serial ya fue recibido en el CAV, asi que el estado
+ *  de entrega es siempre este y no se deja editar. */
+const ESTADO_ENTREGA_FIJO = "Entregado por Transportadora";
 
 const inputClassName =
   "w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100/70";
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function formatDate(value?: string | null) {
   if (!value) return "Sin fecha";
@@ -565,9 +563,8 @@ function AprobarModal({
     descripcion_producto: initialDescripcion as string,
     numero_guia: "",
     cav_id: novedad.cav?.id ? String(novedad.cav.id) : "",
-    fecha_envio: todayISO(),
     fecha_entrega_pdv: "",
-    estado_entrega: "Pendiente de Entrega",
+    estado_entrega: ESTADO_ENTREGA_FIJO,
   });
 
   const cavOptions: SearchableSelectOption[] = cavs.map((cav) => ({
@@ -588,7 +585,6 @@ function AprobarModal({
         cav_id: form.cav_id ? Number(form.cav_id) : null,
         soporte_id: subido?.id ?? null,
         centro_costos_cav: centroCostos || null,
-        fecha_envio: `${form.fecha_envio}T00:00:00`,
         fecha_entrega_pdv: form.fecha_entrega_pdv ? `${form.fecha_entrega_pdv}T00:00:00` : null,
         estado_entrega: form.estado_entrega || null,
       };
@@ -674,13 +670,13 @@ function AprobarModal({
               />
             </Field>
           </div>
-          <Field label="Fecha de envio">
+          <Field label="Fecha de creacion de la novedad">
             <input
-              type="date"
-              className={inputClassName}
-              value={form.fecha_envio}
-              onChange={(event) => update("fecha_envio", event.target.value)}
-              required
+              className={`${inputClassName} bg-slate-50 text-slate-500`}
+              value={formatDateTime(novedad.creada_at)}
+              readOnly
+              tabIndex={-1}
+              aria-readonly="true"
             />
           </Field>
           <Field label="Fecha entrega PDV (opcional)">
@@ -693,17 +689,13 @@ function AprobarModal({
           </Field>
           <div className="sm:col-span-2">
             <Field label="Estado de entrega">
-              <select
-                className={inputClassName}
-                value={form.estado_entrega}
-                onChange={(event) => update("estado_entrega", event.target.value)}
-              >
-                {ESTADO_ENTREGA_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              <input
+                className={`${inputClassName} bg-slate-50 text-slate-500`}
+                value={ESTADO_ENTREGA_FIJO}
+                readOnly
+                tabIndex={-1}
+                aria-readonly="true"
+              />
             </Field>
           </div>
           <div className="sm:col-span-2">

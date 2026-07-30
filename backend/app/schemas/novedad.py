@@ -33,7 +33,8 @@ class AprobarNovedadRequest(BaseModel):
     # Opcional en esta rama: el ingreso a abastecimiento ya queda soportado por la guia.
     soporte_id: int | None = None
     centro_costos_cav: str | None = Field(default=None, max_length=120)
-    fecha_envio: datetime
+    # No se recibe fecha de envio: el abastecimiento se registra con la fecha de
+    # creacion de la novedad, que la pone el sistema y no es editable.
     fecha_entrega_pdv: datetime | None = None
     estado_entrega: str | None = Field(default=None, max_length=50)
 
@@ -49,6 +50,8 @@ class NovedadRead(BaseModel):
     serial: str
     descripcion_producto: str | None = None
     cav: CAVRead | None = None
+    # Momento en que el sistema genero la novedad (creacion del serial).
+    creada_at: datetime | None = None
     last_movement_at: datetime | None = None
     # 'nueva'        = generada por el sistema, Trade puede actuar.
     # 'en_aprobacion'= ya enviada a OPS, en espera.

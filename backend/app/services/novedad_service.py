@@ -135,6 +135,7 @@ def list_novedades(
                 serial=serial.serial,
                 descripcion_producto=serial.descripcion_producto,
                 cav=CAVRead.model_validate(serial.cav) if serial.cav else None,
+                creada_at=serial.created_at,
                 last_movement_at=serial.last_movement_at,
                 estado_resolucion=estado,
                 resolucion_id=en_aprobacion.id if en_aprobacion else None,
@@ -466,7 +467,8 @@ def aprobar_novedad(
         descripcion_producto=descripcion_producto,
         numero_guia=payload.numero_guia.strip(),
         centro_costos_cav=centro_costos,
-        fecha_envio=payload.fecha_envio,
+        # La fecha de envio del abastecimiento es la de creacion de la novedad.
+        fecha_envio=serial.created_at,
         fecha_entrega_pdv=payload.fecha_entrega_pdv,
         estado_entrega=payload.estado_entrega,
         soporte_id=_validar_soporte_id(db, payload.soporte_id),
